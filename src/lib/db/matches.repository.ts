@@ -93,34 +93,6 @@ export async function listRecentMatches(clubId: string, limit: number): Promise<
   return rows.map(mapMatchRow);
 }
 
-export async function listMatchesPage(
-  clubId: string,
-  page: number,
-  pageSize: number,
-): Promise<{ matches: Match[]; total: number }> {
-  const db = getDbReader();
-  const from = (page - 1) * pageSize;
-  const response = await db
-    .from("matches")
-    .select("*", { count: "exact" })
-    .eq("club_id", clubId)
-    .order("played_at", { ascending: false })
-    .range(from, from + pageSize - 1);
-
-  // Página além do fim: o PostgREST responde 416 (PGRST103) em vez de lista vazia.
-  if (response.error?.code === "PGRST103") {
-    const { count, error } = await db
-      .from("matches")
-      .select("*", { count: "exact", head: true })
-      .eq("club_id", clubId);
-    assertOk({ error }, "contar partidas");
-    return { matches: [], total: count ?? 0 };
-  }
-
-  const rows = unwrap(response, "listar partidas");
-  return { matches: rows.map(mapMatchRow), total: response.count ?? rows.length };
-}
-
 export async function getMatchDetails(
   clubId: string,
   matchId: string,

@@ -5,16 +5,20 @@ import { ClubRecentMatches } from "@/components/clubs/ClubRecentMatches";
 import { ClubRecord } from "@/components/clubs/ClubRecord";
 import { ClubStats } from "@/components/clubs/ClubStats";
 import { SectionHeading } from "@/components/layout/SectionHeading";
+import { SessionHeader } from "@/components/matches/SessionHeader";
 import { PlayerRanking } from "@/components/players/PlayerRanking";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { listClubProgress } from "@/lib/db/clubs.repository";
 import { listRecentMatches } from "@/lib/db/matches.repository";
 import { listPlayersByClub } from "@/lib/db/players.repository";
 import { buildPlayerRankings } from "@/lib/stats/player-stats";
+import { groupSessions } from "@/lib/stats/sessions";
 
 import { loadClub } from "./load-club";
 
 const RECENT_MATCHES = 5;
+/** Janela para achar a última noite inteira (nenhuma noite tem tantas partidas). */
+const LAST_SESSION_WINDOW = 60;
 
 export default async function ClubDashboardPage({
   params,
@@ -24,11 +28,12 @@ export default async function ClubDashboardPage({
   const club = await loadClub(clubId);
 
   const [recentMatches, players, progress] = await Promise.all([
-    listRecentMatches(club.id, RECENT_MATCHES),
+    listRecentMatches(club.id, LAST_SESSION_WINDOW),
     listPlayersByClub(club.id),
     listClubProgress(club.id),
   ]);
   const rankings = buildPlayerRankings(players.filter((player) => player.isMember));
+  const lastSession = groupSessions([...recentMatches].reverse()).at(-1);
 
   return (
     <div className="space-y-10">
@@ -51,7 +56,18 @@ export default async function ClubDashboardPage({
       <div className="grid gap-10 lg:grid-cols-3 lg:gap-6">
         <section className="lg:col-span-2">
           <SectionHeading title="Últimos jogos" description="Do histórico salvo no FC Clubs Stats" />
-          <ClubRecentMatches clubId={club.id} matches={recentMatches} formSize={RECENT_MATCHES} />
+          <div className="space-y-4">
+            {lastSession && (
+              <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+                <SessionHeader clubId={club.id} session={lastSession} label="Última noite" />
+              </div>
+            )}
+            <ClubRecentMatches
+              clubId={club.id}
+              matches={recentMatches.slice(0, RECENT_MATCHES)}
+              formSize={RECENT_MATCHES}
+            />
+          </div>
         </section>
         <section>
           <SectionHeading title="Desempenho" />

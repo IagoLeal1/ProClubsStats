@@ -160,6 +160,22 @@ por equipe e por jogador.
 (sem campo), mandante/visitante (sem campo), códigos de posição além de CB/CM/ST, nome da
 região, semântica de `winnerByDnf`, chamadas a partir de IPs da Vercel.
 
+## Funcionalidades
+
+- **Dashboard**: campanha, aproveitamento, últimos jogos, atalho para a última noite,
+  evolução do skill rating e rankings do elenco (inclui MVPs).
+- **Jogadores** e **perfil de cada jogador**: temporada (EA) com posição no elenco, histórico
+  salvo, gráfico de notas, melhor partida e parcerias.
+- **Partidas** agrupadas por noite (partidas a menos de 3 h uma da outra) e **resumo da noite**
+  com MVP, artilheiro, garçom e notas — com botão de compartilhar.
+- **Recordes**: goleadas, sequências, atuações individuais, hat-tricks, duplas e conexões de
+  assistência (somente as garantidas pelos números de cada partida — a EA não informa lance a
+  lance).
+- **Prévias para WhatsApp**: links do resumo da noite e do perfil geram imagem com os números
+  (`opengraph-image.tsx`, fonte Geist em `assets/fonts`, licença SIL OFL).
+- **Evolução do skill rating**: a EA só informa o valor atual; cada jogo de liga novo vira um
+  ponto em `club_progress`.
+
 ## Montador de formação
 
 `/clubs/[clubId]/formations` — escolha o esquema (4-3-3, 4-2-3-1, 4-4-2, 4-1-2-1-2,

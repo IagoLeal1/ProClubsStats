@@ -19,6 +19,17 @@ const dateTimeFormat = new Intl.DateTimeFormat(LOCALE, {
   minute: "2-digit",
 });
 const relativeFormat = new Intl.RelativeTimeFormat(LOCALE, { numeric: "auto" });
+const weekdayDateFormat = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: TIME_ZONE,
+  weekday: "long",
+  day: "2-digit",
+  month: "2-digit",
+});
+const timeFormat = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 export function formatInteger(value: number | null): string {
   return value === null ? EMPTY : integerFormat.format(value);
@@ -47,6 +58,16 @@ export function formatSigned(value: number): string {
 
 export function formatDateTime(iso: string): string {
   return dateTimeFormat.format(new Date(iso));
+}
+
+/** Ex.: "sábado, 04/10". */
+export function formatWeekdayDate(iso: string): string {
+  return weekdayDateFormat.format(new Date(iso));
+}
+
+/** Ex.: "20:47". */
+export function formatTime(iso: string): string {
+  return timeFormat.format(new Date(iso));
 }
 
 const RELATIVE_STEPS: [Intl.RelativeTimeFormatUnit, number][] = [

@@ -6,16 +6,19 @@ import { z } from "zod";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { MatchCard } from "@/components/matches/MatchCard";
+import { SessionHeader } from "@/components/matches/SessionHeader";
 import { buttonVariants } from "@/components/ui/button";
-import { listMatchesPage } from "@/lib/db/matches.repository";
+import { listAllClubMatches } from "@/lib/db/matches.repository";
 import { formatInteger } from "@/lib/format";
+import { groupSessions } from "@/lib/stats/sessions";
 import { cn } from "@/lib/utils";
 
 import { loadClub } from "../load-club";
 
 export const metadata: Metadata = { title: "Partidas" };
 
-const PAGE_SIZE = 20;
+/** Noites de jogo por página. */
+const SESSIONS_PER_PAGE = 5;
 
 const searchParamsSchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).catch(1),
@@ -29,10 +32,8 @@ export default async function ClubMatchesPage({
   const club = await loadClub(clubId);
   const { page } = searchParamsSchema.parse(rawSearchParams);
 
-  const { matches, total } = await listMatchesPage(club.id, page, PAGE_SIZE);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
-  if (total === 0) {
+  const matches = await listAllClubMatches(club.id);
+  if (matches.length === 0) {
     return (
       <EmptyState
         icon={CalendarXIcon}
@@ -42,17 +43,31 @@ export default async function ClubMatchesPage({
     );
   }
 
+  const sessions = groupSessions(matches).reverse();
+  const totalPages = Math.max(1, Math.ceil(sessions.length / SESSIONS_PER_PAGE));
+  const visible = sessions.slice((page - 1) * SESSIONS_PER_PAGE, page * SESSIONS_PER_PAGE);
+  const pageHref = (target: number) => `/clubs/${club.id}/matches?page=${target}`;
+
   return (
     <section>
       <SectionHeading
         title="Histórico de partidas"
-        description={`${formatInteger(total)} partidas salvas · liga, playoffs e amistosos`}
+        description={`${formatInteger(matches.length)} partidas em ${formatInteger(sessions.length)} ${
+          sessions.length === 1 ? "noite" : "noites"
+        } · liga, playoffs e amistosos`}
       />
 
-      {matches.length > 0 ? (
-        <div className="space-y-2">
-          {matches.map((match) => (
-            <MatchCard key={match.id} match={match} />
+      {visible.length > 0 ? (
+        <div className="space-y-8">
+          {visible.map((session) => (
+            <div key={session.id} className="space-y-3">
+              <SessionHeader clubId={club.id} session={session} />
+              <div className="space-y-2">
+                {[...session.matches].reverse().map((match) => (
+                  <MatchCard key={match.id} match={match} />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       ) : (
@@ -60,15 +75,15 @@ export default async function ClubMatchesPage({
       )}
 
       {totalPages > 1 && (
-        <nav aria-label="Paginação" className="mt-6 flex items-center justify-between gap-3">
-          <PageLink href={`/clubs/${club.id}/matches?page=${page - 1}`} disabled={page <= 1}>
-            <ChevronLeftIcon data-icon="inline-start" /> Anteriores
+        <nav aria-label="Paginação" className="mt-8 flex items-center justify-between gap-3">
+          <PageLink href={pageHref(page - 1)} disabled={page <= 1}>
+            <ChevronLeftIcon data-icon="inline-start" /> Mais recentes
           </PageLink>
           <span className="text-sm text-muted-foreground tabular">
             Página {page} de {totalPages}
           </span>
-          <PageLink href={`/clubs/${club.id}/matches?page=${page + 1}`} disabled={page >= totalPages}>
-            Próximas <ChevronRightIcon data-icon="inline-end" />
+          <PageLink href={pageHref(page + 1)} disabled={page >= totalPages}>
+            Mais antigas <ChevronRightIcon data-icon="inline-end" />
           </PageLink>
         </nav>
       )}
