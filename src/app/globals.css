@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-win: var(--win);
+  --color-draw: var(--draw);
+  --color-loss: var(--loss);
+  --color-pitch: var(--pitch);
+  --color-pitch-line: var(--pitch-line);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * Tema único (dark). Azul-grafite discreto, com verde como cor de destaque e
+ * cores semânticas para resultado (vitória / empate / derrota).
+ */
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(0.16 0.012 258);
+  --foreground: oklch(0.96 0.005 258);
+  --card: oklch(0.205 0.014 258);
+  --card-foreground: oklch(0.96 0.005 258);
+  --popover: oklch(0.22 0.014 258);
+  --popover-foreground: oklch(0.96 0.005 258);
+  --primary: oklch(0.8 0.17 155);
+  --primary-foreground: oklch(0.2 0.04 155);
+  --secondary: oklch(0.26 0.016 258);
+  --secondary-foreground: oklch(0.96 0.005 258);
+  --muted: oklch(0.25 0.014 258);
+  --muted-foreground: oklch(0.69 0.016 258);
+  --accent: oklch(0.27 0.018 258);
+  --accent-foreground: oklch(0.96 0.005 258);
+  --destructive: oklch(0.68 0.19 25);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.8 0.17 155 / 55%);
+
+  --win: oklch(0.74 0.17 152);
+  --draw: oklch(0.7 0.02 258);
+  --loss: oklch(0.66 0.2 25);
+
+  --pitch: oklch(0.36 0.07 152);
+  --pitch-line: oklch(1 0 0 / 35%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
