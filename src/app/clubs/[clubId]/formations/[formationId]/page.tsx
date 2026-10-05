@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { ArrowLeftIcon } from "lucide-react";
 
 import { FormationEditor } from "@/components/formations/FormationEditor";
-import { buttonVariants } from "@/components/ui/button";
+import { BackLink } from "@/components/layout/BackLink";
 import { getFormation } from "@/lib/db/formations.repository";
 import { formatRelativeTime } from "@/lib/format";
 
@@ -37,15 +35,10 @@ export default async function FormationPage({
 
   return (
     <div className="space-y-6">
-      <Link
-        href={`/clubs/${club.id}/formations`}
-        className={buttonVariants({ variant: "ghost", size: "sm", className: "-ml-2" })}
-      >
-        <ArrowLeftIcon data-icon="inline-start" /> Formações
-      </Link>
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight">{formation.name}</h2>
-        <p className="text-xs text-muted-foreground">
+      <BackLink href={`/clubs/${club.id}/formations`}>Formações</BackLink>
+      <div className="space-y-1">
+        <h2 className="figure text-5xl break-words uppercase">{formation.name}</h2>
+        <p className="text-sm text-muted-foreground">
           {formation.formationType} · atualizada {formatRelativeTime(formation.updatedAt)}
         </p>
       </div>

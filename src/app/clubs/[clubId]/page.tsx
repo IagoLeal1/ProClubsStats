@@ -1,24 +1,24 @@
+import Link from "next/link";
 import { TriangleAlertIcon } from "lucide-react";
 
 import { ClubProgress } from "@/components/clubs/ClubProgress";
 import { ClubRecentMatches } from "@/components/clubs/ClubRecentMatches";
-import { ClubRecord } from "@/components/clubs/ClubRecord";
 import { ClubStats } from "@/components/clubs/ClubStats";
+import { LastSessionCard } from "@/components/clubs/LastSessionCard";
 import { SectionHeading } from "@/components/layout/SectionHeading";
-import { SessionHeader } from "@/components/matches/SessionHeader";
 import { PlayerRanking } from "@/components/players/PlayerRanking";
+import { AssistLinks } from "@/components/records/AssistLinks";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { listClubProgress } from "@/lib/db/clubs.repository";
-import { listRecentMatches } from "@/lib/db/matches.repository";
+import { listAllClubMatches, listClubPlayerMatchStats } from "@/lib/db/matches.repository";
 import { listPlayersByClub } from "@/lib/db/players.repository";
+import { computeAssistLinks } from "@/lib/stats/partnerships";
 import { buildPlayerRankings } from "@/lib/stats/player-stats";
-import { groupSessions } from "@/lib/stats/sessions";
+import { groupSessions, summarizeSession } from "@/lib/stats/sessions";
 
 import { loadClub } from "./load-club";
 
 const RECENT_MATCHES = 5;
-/** Janela para achar a última noite inteira (nenhuma noite tem tantas partidas). */
-const LAST_SESSION_WINDOW = 60;
 
 export default async function ClubDashboardPage({
   params,
@@ -27,16 +27,20 @@ export default async function ClubDashboardPage({
   const [{ clubId }, { sync }] = await Promise.all([params, searchParams]);
   const club = await loadClub(clubId);
 
-  const [recentMatches, players, progress] = await Promise.all([
-    listRecentMatches(club.id, LAST_SESSION_WINDOW),
+  const [matches, stats, players, progress] = await Promise.all([
+    listAllClubMatches(club.id),
+    listClubPlayerMatchStats(club.id),
     listPlayersByClub(club.id),
     listClubProgress(club.id),
   ]);
+
   const rankings = buildPlayerRankings(players.filter((player) => player.isMember));
-  const lastSession = groupSessions([...recentMatches].reverse()).at(-1);
+  const recentMatches = matches.slice(-RECENT_MATCHES).reverse();
+  const lastSession = groupSessions(matches).at(-1);
+  const assistLinks = computeAssistLinks(matches, stats);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-11">
       {sync === "queued" && (
         <Alert>
           <TriangleAlertIcon />
@@ -46,7 +50,6 @@ export default async function ClubDashboardPage({
           </AlertDescription>
         </Alert>
       )}
-
       {sync === "partial" && (
         <Alert>
           <TriangleAlertIcon />
@@ -58,42 +61,42 @@ export default async function ClubDashboardPage({
         </Alert>
       )}
 
-      <section>
-        <SectionHeading title="Resumo" description="Partidas de liga registradas pela EA" />
-        <ClubStats record={club.record} />
-      </section>
+      <ClubStats record={club.record} />
 
-      <div className="grid gap-10 lg:grid-cols-3 lg:gap-6">
-        <section className="lg:col-span-2">
-          <SectionHeading title="Últimos jogos" description="Do histórico salvo no FC Clubs Stats" />
-          <div className="space-y-4">
-            {lastSession && (
-              <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-                <SessionHeader clubId={club.id} session={lastSession} label="Última noite" />
-              </div>
-            )}
-            <ClubRecentMatches
+      <div className="flex flex-wrap items-start gap-6">
+        <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-8">
+          {lastSession && (
+            <LastSessionCard
               clubId={club.id}
-              matches={recentMatches.slice(0, RECENT_MATCHES)}
-              formSize={RECENT_MATCHES}
+              session={lastSession}
+              summary={summarizeSession(lastSession, stats)}
             />
-          </div>
-        </section>
-        <section>
-          <SectionHeading title="Desempenho" />
-          <ClubRecord record={club.record} />
-        </section>
-      </div>
+          )}
+          <ClubRecentMatches clubId={club.id} matches={recentMatches} />
+        </div>
 
-      <section>
-        <SectionHeading title="Evolução do skill rating" description="Registrada a cada jogo de liga" />
-        <ClubProgress points={progress} />
-      </section>
+        <aside className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
+          <section className="flex flex-col gap-4 border bg-card p-5 sm:p-6">
+            <div className="space-y-1">
+              <span className="kicker text-primary">Conexões de gol</span>
+              <p className="text-sm text-muted-foreground">
+                Quem deu assistência para quem — só o que dá para garantir pelos números de cada
+                partida.
+              </p>
+            </div>
+            <AssistLinks clubId={club.id} links={assistLinks.links} limit={4} />
+            <Link href={`/clubs/${club.id}/records`} className="text-sm text-muted-foreground hover:text-foreground">
+              {assistLinks.confirmedAssists} de {assistLinks.totalAssists} assistências confirmadas · ver recordes
+            </Link>
+          </section>
+          <ClubProgress points={progress} />
+        </aside>
+      </div>
 
       <section>
         <SectionHeading
           title="Rankings do elenco"
-          description="Membros atuais · estatísticas da temporada no clube (EA)"
+          action={<span className="text-sm text-muted-foreground">Temporada no clube · EA</span>}
         />
         <PlayerRanking categories={rankings} />
       </section>

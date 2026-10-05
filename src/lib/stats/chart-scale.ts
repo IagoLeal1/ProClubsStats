@@ -3,10 +3,9 @@ export interface ChartScale {
   tickStep: number;
 }
 
-/** Escala de notas: termina em 10 e começa um pouco abaixo da menor nota. */
-export function ratingScale(values: number[]): ChartScale {
-  const min = Math.max(0, Math.min(5, Math.floor(Math.min(...values)) - 1));
-  return { domain: [min, 10], tickStep: 10 - min > 6 ? 2 : 1 };
+/** Escala de notas para colunas: sempre de 0 a 10 (coluna parte do zero). */
+export function ratingScale(): ChartScale {
+  return { domain: [0, 10], tickStep: 2 };
 }
 
 /** Escala "redonda" para valores grandes (ex.: skill rating). */

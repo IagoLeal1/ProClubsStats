@@ -3,6 +3,7 @@ import { ImageResponse } from "next/og";
 
 import {
   OG_COLORS,
+  OG_FIGURE,
   OG_SIZE,
   OgFrame,
   OgStat,
@@ -34,7 +35,7 @@ export default async function Image({ params }: { params: Promise<{ clubId: stri
   return new ImageResponse(
     (
       <OgFrame clubName={club.name} crest={crest}>
-        <div style={{ display: "flex", fontSize: 96, fontWeight: 700 }}>{player.name}</div>
+        <div style={{ display: "flex", ...OG_FIGURE, fontSize: 128, textTransform: "uppercase" }}>{player.name}</div>
         <div style={{ display: "flex", fontSize: 34, color: OG_COLORS.muted, marginBottom: 36 }}>
           {subtitle || "Jogador"}
         </div>

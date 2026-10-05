@@ -52,7 +52,7 @@ const COLUMNS: Column[] = [
 /** Partidas salvas do jogador — também é a versão em tabela do gráfico de notas. */
 export function PlayerMatchLog({ entries }: { entries: PlayerMatchEntry[] }) {
   return (
-    <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+    <div className="overflow-hidden border bg-card">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
@@ -70,7 +70,7 @@ export function PlayerMatchLog({ entries }: { entries: PlayerMatchEntry[] }) {
               <TableCell className="sticky left-0 z-10 bg-card pl-4 group-hover:bg-[color-mix(in_oklch,var(--card),var(--muted)_50%)]">
                 <Link
                   href={`/clubs/${entry.match.clubId}/matches/${entry.match.id}`}
-                  className="flex items-center gap-1.5 font-medium hover:underline"
+                  className="flex items-center gap-1.5 font-medium hover:text-primary"
                 >
                   <span className="truncate">vs {entry.match.opponent.name}</span>
                   {entry.stats.manOfTheMatch && (

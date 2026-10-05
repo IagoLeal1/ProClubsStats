@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon } from "lucide-react";
 
+import { BackLink } from "@/components/layout/BackLink";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { MatchPlayerStats } from "@/components/matches/MatchPlayerStats";
 import { MatchScoreboard } from "@/components/matches/MatchScoreboard";
 import { MatchTeamStats } from "@/components/matches/MatchTeamStats";
-import { buttonVariants } from "@/components/ui/button";
 import { getMatchDetails } from "@/lib/db/matches.repository";
 
 import { isValidId, loadClub } from "../../load-club";
@@ -26,12 +24,7 @@ export default async function MatchDetailsPage({
 
   return (
     <div className="space-y-8">
-      <Link
-        href={`/clubs/${club.id}/matches`}
-        className={buttonVariants({ variant: "ghost", size: "sm", className: "-ml-2" })}
-      >
-        <ArrowLeftIcon data-icon="inline-start" /> Histórico de partidas
-      </Link>
+      <BackLink href={`/clubs/${club.id}/matches`}>Partidas</BackLink>
 
       <MatchScoreboard club={club} match={match} />
 

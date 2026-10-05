@@ -49,7 +49,7 @@ export function MatchPlayerStats({
   players: MatchPlayerStatsData[];
 }) {
   return (
-    <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+    <div className="overflow-hidden border bg-card">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
@@ -68,7 +68,7 @@ export function MatchPlayerStats({
                 <div className="flex items-center gap-1.5">
                   <Link
                     href={`/clubs/${clubId}/players/${player.playerId}`}
-                    className="truncate font-medium hover:underline"
+                    className="truncate font-semibold hover:text-primary"
                   >
                     {player.playerName}
                   </Link>

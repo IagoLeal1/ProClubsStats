@@ -10,7 +10,7 @@ export default function SearchLoading() {
       </div>
       <div className="space-y-2">
         {Array.from({ length: 4 }, (_, index) => (
-          <Skeleton key={index} className="h-20 w-full rounded-xl" />
+          <Skeleton key={index} className="h-20 w-full rounded-sm" />
         ))}
       </div>
     </Container>

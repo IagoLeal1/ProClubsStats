@@ -15,11 +15,11 @@ export function PlayerStatsCard({ player }: { player: Player }) {
   return (
     <Link
       href={`/clubs/${player.clubId}/players/${player.id}`}
-      className="block rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-colors hover:bg-accent"
+      className="block border bg-card p-4 transition-colors hover:bg-surface"
     >
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-medium">{player.name}</p>
+          <p className="truncate font-display text-xl font-bold">{player.name}</p>
           <p className="truncate text-xs text-muted-foreground">
             {[player.position, player.proName].filter(Boolean).join(" · ") || "—"}
           </p>
@@ -40,8 +40,8 @@ export function PlayerStatsCard({ player }: { player: Player }) {
       <dl className="mt-3 grid grid-cols-4 gap-x-2 gap-y-3">
         {CARD_COLUMNS.map((column) => (
           <div key={column.key}>
-            <dt className="text-[11px] text-muted-foreground">{column.shortLabel}</dt>
-            <dd className="text-sm font-medium tabular">{column.render(player)}</dd>
+            <dt className="kicker text-[11px] text-muted-foreground">{column.shortLabel}</dt>
+            <dd className="font-display text-lg font-bold tabular">{column.render(player)}</dd>
           </div>
         ))}
       </dl>

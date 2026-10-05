@@ -2,6 +2,8 @@ import { ImageResponse } from "next/og";
 
 import {
   OG_COLORS,
+  OG_FIGURE,
+  OG_KICKER,
   OG_SIZE,
   OgFrame,
   OgStat,
@@ -32,11 +34,11 @@ export default async function Image({ params }: { params: Promise<{ clubId: stri
   return new ImageResponse(
     (
       <OgFrame clubName={club.name} crest={crest}>
-        <div style={{ display: "flex", fontSize: 30, color: OG_COLORS.primary, fontWeight: 700 }}>
-          {`RESUMO DA NOITE · ${formatWeekdayDate(session.startedAt).toUpperCase()}`}
+        <div style={{ display: "flex", ...OG_KICKER, fontSize: 28, color: OG_COLORS.primary }}>
+          {`Resumo da noite · ${formatWeekdayDate(session.startedAt)}`}
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 28, marginTop: 8 }}>
-          <div style={{ display: "flex", fontSize: 104, fontWeight: 700, gap: 24 }}>
+          <div style={{ display: "flex", ...OG_FIGURE, fontSize: 132, gap: 24 }}>
             <span style={{ color: OG_COLORS.win }}>{`${record.wins}V`}</span>
             <span style={{ color: OG_COLORS.draw }}>{`${record.draws}E`}</span>
             <span style={{ color: OG_COLORS.loss }}>{`${record.losses}D`}</span>
@@ -46,11 +48,11 @@ export default async function Image({ params }: { params: Promise<{ clubId: stri
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 4, marginBottom: 24 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 18, marginBottom: 24 }}>
           {session.matches.slice(0, 20).map((match) => (
             <div
               key={match.id}
-              style={{ display: "flex", width: 36, height: 12, borderRadius: 6, background: RESULT_COLORS[match.result] }}
+              style={{ display: "flex", width: 40, height: 14, background: RESULT_COLORS[match.result], transform: "skewX(-14deg)" }}
             />
           ))}
         </div>

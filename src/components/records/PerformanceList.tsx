@@ -13,19 +13,19 @@ interface PerformanceListProps {
 /** Top atuações individuais numa partida (ex.: mais gols num jogo). */
 export function PerformanceList({ title, records, formatValue, clubId }: PerformanceListProps) {
   return (
-    <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-      <p className="text-xs font-medium text-muted-foreground">{title}</p>
+    <div className="border bg-card p-4">
+      <p className="kicker text-muted-foreground">{title}</p>
       {records.length === 0 ? (
         <p className="mt-2 text-sm text-muted-foreground">Sem registros ainda.</p>
       ) : (
-        <ol className="mt-2 space-y-2">
+        <ol className="mt-3 space-y-3">
           {records.map(({ stat, match, value }, index) => (
             <li key={`${stat.matchId}-${stat.playerId}`} className="flex items-center gap-3">
               <span
                 className={
                   index === 0
-                    ? "w-10 text-xl font-semibold text-primary"
-                    : "w-10 text-base font-semibold text-muted-foreground"
+                    ? "figure w-12 text-3xl text-primary"
+                    : "figure w-12 text-2xl text-muted-foreground"
                 }
               >
                 {formatValue(value)}
@@ -33,7 +33,7 @@ export function PerformanceList({ title, records, formatValue, clubId }: Perform
               <span className="min-w-0 flex-1">
                 <Link
                   href={`/clubs/${clubId}/players/${stat.playerId}`}
-                  className="block truncate text-sm font-medium hover:underline"
+                  className="block truncate font-semibold hover:text-primary"
                 >
                   {stat.playerName}
                 </Link>

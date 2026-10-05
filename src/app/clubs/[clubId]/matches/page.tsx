@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
-import { MatchCard } from "@/components/matches/MatchCard";
+import { MatchCard, MatchList } from "@/components/matches/MatchCard";
 import { SessionHeader } from "@/components/matches/SessionHeader";
 import { buttonVariants } from "@/components/ui/button";
 import { listAllClubMatches } from "@/lib/db/matches.repository";
@@ -58,15 +58,15 @@ export default async function ClubMatchesPage({
       />
 
       {visible.length > 0 ? (
-        <div className="space-y-8">
+        <div className="space-y-10">
           {visible.map((session) => (
             <div key={session.id} className="space-y-3">
               <SessionHeader clubId={club.id} session={session} />
-              <div className="space-y-2">
+              <MatchList>
                 {[...session.matches].reverse().map((match) => (
-                  <MatchCard key={match.id} match={match} />
+                  <MatchCard key={match.id} match={match} dateStyle="time" />
                 ))}
-              </div>
+              </MatchList>
             </div>
           ))}
         </div>
@@ -92,7 +92,11 @@ export default async function ClubMatchesPage({
 }
 
 function PageLink({ href, disabled, children }: { href: string; disabled: boolean; children: React.ReactNode }) {
-  const className = cn(buttonVariants({ variant: "outline" }), disabled && "pointer-events-none opacity-50");
+  const className = cn(
+    buttonVariants({ variant: "outline" }),
+    "h-11 rounded-sm px-4 font-display text-sm font-bold tracking-[0.08em] uppercase",
+    disabled && "pointer-events-none opacity-50",
+  );
   if (disabled) {
     return (
       <span aria-disabled className={className}>

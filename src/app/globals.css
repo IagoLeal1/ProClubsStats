@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-sans: var(--font-barlow);
+  --font-display: var(--font-barlow-condensed);
+  --font-heading: var(--font-barlow-condensed);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -26,11 +26,13 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-surface: var(--surface);
   --color-win: var(--win);
   --color-draw: var(--draw);
   --color-loss: var(--loss);
   --color-chart-1: var(--chart-1);
   --color-pitch: var(--pitch);
+  --color-pitch-stripe: var(--pitch-stripe);
   --color-pitch-line: var(--pitch-line);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -42,41 +44,43 @@
 }
 
 /*
- * Tema único (dark). Azul-grafite discreto, com verde como cor de destaque e
- * cores semânticas para resultado (vitória / empate / derrota).
+ * "Matchday": preto azulado, verde de gramado como cor da marca (que também é
+ * a cor das vitórias), tipografia condensada de transmissão esportiva.
  */
 :root {
-  --radius: 0.75rem;
+  --radius: 0.25rem;
 
-  --background: oklch(0.16 0.012 258);
-  --foreground: oklch(0.96 0.005 258);
-  --card: oklch(0.205 0.014 258);
-  --card-foreground: oklch(0.96 0.005 258);
-  --popover: oklch(0.22 0.014 258);
-  --popover-foreground: oklch(0.96 0.005 258);
-  --primary: oklch(0.8 0.17 155);
-  --primary-foreground: oklch(0.2 0.04 155);
-  --secondary: oklch(0.26 0.016 258);
-  --secondary-foreground: oklch(0.96 0.005 258);
-  --muted: oklch(0.25 0.014 258);
-  --muted-foreground: oklch(0.69 0.016 258);
-  --accent: oklch(0.27 0.018 258);
-  --accent-foreground: oklch(0.96 0.005 258);
-  --destructive: oklch(0.68 0.19 25);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.8 0.17 155 / 55%);
+  --background: #0b0c0e;
+  --foreground: #f2f4f7;
+  --card: #15171b;
+  --card-foreground: #f2f4f7;
+  --surface: #1e2026;
+  --popover: #1e2026;
+  --popover-foreground: #f2f4f7;
+  --primary: #22c55e;
+  --primary-foreground: #0b0c0e;
+  --secondary: #1e2026;
+  --secondary-foreground: #f2f4f7;
+  --muted: #1e2026;
+  --muted-foreground: #9ba1ac;
+  --accent: #1e2026;
+  --accent-foreground: #f2f4f7;
+  --destructive: #ff5a4f;
+  --border: #2a2d34;
+  --input: #3a3e47;
+  --ring: rgb(34 197 94 / 55%);
 
-  --win: oklch(0.74 0.17 152);
-  --draw: oklch(0.7 0.02 258);
-  --loss: oklch(0.66 0.2 25);
+  --win: #22c55e;
+  --draw: #8e949e;
+  --loss: #ff5a4f;
 
-  /* Série de gráfico: verde um degrau abaixo do --primary, dentro da faixa de
+  /* Série de gráfico: verde mais escuro que o da marca, dentro da faixa de
      luminosidade para fundo escuro (validado com o checklist de dataviz). */
-  --chart-1: oklch(0.66 0.16 155);
+  --chart-1: #16a34a;
 
-  --pitch: oklch(0.36 0.07 152);
-  --pitch-line: oklch(1 0 0 / 35%);
+  --pitch: #0f1712;
+  --pitch-stripe: #121c16;
+  --pitch-line: #26352c;
 }
 
 @layer base {
@@ -98,4 +102,37 @@
 
 @utility tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* Paralelogramo dos selos e botões (letreiro de transmissão). */
+@utility clip-slant {
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+@utility clip-slant-sm {
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+}
+
+/* Rótulo pequeno em caixa alta (ex.: "ÚLTIMA NOITE"). */
+@utility kicker {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Número grande, condensado e itálico. */
+@utility figure {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-style: italic;
+  line-height: 0.9;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }

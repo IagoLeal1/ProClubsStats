@@ -2,18 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { ArrowLeftIcon, CalendarXIcon, StarIcon } from "lucide-react";
+import { CalendarXIcon, StarIcon } from "lucide-react";
 
+import { SeriesChart, type SeriesChartPoint } from "@/components/charts/SeriesChart";
+import { ClubCrest } from "@/components/clubs/ClubCrest";
+import { BackLink } from "@/components/layout/BackLink";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
-import { MatchResult } from "@/components/matches/MatchResult";
+import { RESULT_LETTERS } from "@/components/matches/MatchResult";
 import { PlayerMatchLog } from "@/components/players/PlayerMatchLog";
 import { AssistLinks } from "@/components/records/AssistLinks";
-import { LineChart, type LineChartPoint } from "@/components/charts/LineChart";
-import { RatingBadge } from "@/components/players/RatingBadge";
 import { StatCard } from "@/components/stats/StatCard";
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import {
   listAllClubMatches,
   listClubPlayerMatchStats,
@@ -34,8 +33,15 @@ import {
   type AssistLink,
   type PlayerPair,
 } from "@/lib/stats/partnerships";
-import { rankInSquad, summarizePlayerHistory, type SquadRank } from "@/lib/stats/player-history";
+import {
+  rankInSquad,
+  summarizePlayerHistory,
+  type PlayerHistorySummary,
+  type SquadRank,
+} from "@/lib/stats/player-history";
 import { goalsAndAssists } from "@/lib/stats/player-stats";
+import { cn } from "@/lib/utils";
+import type { Club } from "@/types/club";
 import type { PlayerMatchEntry } from "@/types/match";
 import type { Player } from "@/types/player";
 
@@ -62,8 +68,7 @@ export async function generateMetadata({
   return { title: player.name };
 }
 
-const rankHint = (rank: SquadRank | null) =>
-  rank ? `${rank.position}º de ${rank.total} no elenco` : undefined;
+const rankBadge = (rank: SquadRank | null) => (rank ? `${rank.position}º` : undefined);
 
 /** Eixo X do gráfico: dia e hora, porque várias partidas costumam ser no mesmo dia. */
 const axisDate = new Intl.DateTimeFormat("pt-BR", {
@@ -82,7 +87,7 @@ function contributionLabel(goals: number, assists: number): string | null {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-function toRatingPoints(entries: PlayerMatchEntry[]): LineChartPoint[] {
+function toRatingPoints(entries: PlayerMatchEntry[]): SeriesChartPoint[] {
   return entries
     .filter((entry) => entry.stats.rating !== null)
     .slice(0, CHART_MATCHES)
@@ -104,18 +109,125 @@ function toRatingPoints(entries: PlayerMatchEntry[]): LineChartPoint[] {
 function RatingChart({ history, average }: { history: PlayerMatchEntry[]; average: number | null }) {
   const points = toRatingPoints(history);
   if (points.length === 0) return <p className="text-sm text-muted-foreground">Sem notas registradas.</p>;
-  const scale = ratingScale(points.map((point) => point.value));
   return (
-    <LineChart
+    <SeriesChart
       points={points}
-      domain={scale.domain}
-      tickStep={scale.tickStep}
+      variant="bar"
       valueFormat="rating"
       reference={average === null ? null : { value: average, label: `média ${formatRating(average)}` }}
       ariaLabel={`Notas das últimas ${points.length} partidas${
         average === null ? "" : `, média ${formatRating(average)}`
       }`}
+      {...ratingScale()}
     />
+  );
+}
+
+interface Accolades {
+  topScorer: boolean;
+  topAssister: boolean;
+  topMvp: boolean;
+}
+
+function PlayerHero({ club, player, accolades }: { club: Club; player: Player; accolades: Accolades }) {
+  const position = player.position ?? formatPositionGroupShort(player.favoritePosition);
+  const badges = [
+    accolades.topScorer && "Artilheiro do elenco",
+    accolades.topAssister && "Garçom do elenco",
+    accolades.topMvp && "Mais MVPs do elenco",
+    !player.isMember && "Ex-membro",
+  ].filter((badge): badge is string => Boolean(badge));
+
+  return (
+    <section className="relative overflow-hidden border bg-card px-5 py-7 sm:px-8 sm:py-9">
+      <span
+        aria-hidden
+        className="figure pointer-events-none absolute -top-6 -right-3 text-[12rem] text-surface select-none sm:text-[16rem]"
+      >
+        {position}
+      </span>
+      <div className="relative flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <ClubCrest name={club.name} src={club.crestUrl} size={28} />
+          <span className="kicker text-muted-foreground">{club.name}</span>
+        </div>
+        <h2 className="figure text-6xl break-all uppercase sm:text-8xl">{player.name}</h2>
+        {player.proName && <p className="text-muted-foreground">{player.proName}</p>}
+        <div className="flex flex-wrap gap-2">
+          <span className="clip-slant flex h-8 items-center bg-primary px-4 font-display text-base font-extrabold text-primary-foreground">
+            {position}
+          </span>
+          {player.overall !== null && (
+            <span className="flex h-8 items-center border border-input px-3 font-display text-base font-bold">
+              {player.overall} OVR
+            </span>
+          )}
+          {badges.map((badge) => (
+            <span
+              key={badge}
+              className="flex h-8 items-center border border-input px-3 font-display text-base font-bold tracking-[0.04em] uppercase"
+            >
+              {badge}
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HistoryHighlights({ summary }: { summary: PlayerHistorySummary }) {
+  return (
+    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="flex flex-col gap-1 border bg-card p-3 sm:p-4">
+        <span className="figure text-3xl text-primary sm:text-4xl">{formatPercent(summary.winRate)}</span>
+        <span className="text-xs text-muted-foreground">
+          vitórias com ele · {summary.wins}V {summary.draws}E {summary.losses}D
+        </span>
+      </div>
+      <div className="flex flex-col gap-1 border bg-card p-3 sm:p-4">
+        <span className="figure text-3xl sm:text-4xl">
+          {summary.goals}+{summary.assists}
+        </span>
+        <span className="text-xs text-muted-foreground">gols + assist. · {summary.shots} chutes</span>
+      </div>
+      <div className="flex flex-col gap-1 border bg-card p-3 sm:p-4">
+        <span className="figure text-3xl sm:text-4xl">{formatPercent(summary.passAccuracy)}</span>
+        <span className="text-xs text-muted-foreground">
+          passes certos · {summary.manOfTheMatch} MVP · nota {formatRating(summary.averageRating)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function BestMatch({ entry }: { entry: PlayerMatchEntry }) {
+  const { match, stats } = entry;
+  return (
+    <Link
+      href={`/clubs/${match.clubId}/matches/${match.id}`}
+      className="flex items-center gap-4 border bg-card px-4 py-3.5 transition-colors hover:bg-surface"
+    >
+      <span className="figure clip-slant flex h-11 w-16 items-center justify-center bg-primary text-2xl text-primary-foreground">
+        {formatRating(stats.rating)}
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="kicker text-muted-foreground">Melhor partida</span>
+        <span className="truncate font-semibold">
+          vs {match.opponent.name}
+          {stats.goals + stats.assists > 0 && ` · ${contributionLabel(stats.goals, stats.assists)}`}
+        </span>
+        <span className="text-xs text-muted-foreground">{formatDateTime(match.playedAt)}</span>
+      </span>
+      <span
+        className={cn(
+          "figure text-2xl",
+          match.result === "W" ? "text-win" : match.result === "L" ? "text-loss" : "text-draw",
+        )}
+      >
+        {RESULT_LETTERS[match.result]} {match.goalsFor}–{match.goalsAgainst}
+      </span>
+    </Link>
   );
 }
 
@@ -133,42 +245,40 @@ function Partnerships({
   partners: PlayerPair[];
 }) {
   const partnerOf = (pair: PlayerPair) => (pair.first.id === player.id ? pair.second : pair.first);
+  const boxes = [
+    { title: "Quem mais deu assistência pra ele", links: received },
+    { title: "Pra quem ele mais deu assistência", links: given },
+  ];
 
   return (
-    <div className="space-y-3">
-      <div>
-        <h3 className="text-sm font-medium">Parcerias</h3>
-        <p className="text-xs text-muted-foreground">
-          Assistências confirmadas pelos números de cada partida (a EA não informa lance a lance).
-        </p>
-      </div>
-      <div className="grid gap-3 lg:grid-cols-3">
-        <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-          <p className="mb-3 text-xs font-medium text-muted-foreground">Quem mais deu assistência para ele</p>
-          <AssistLinks clubId={clubId} links={received} limit={3} />
-        </div>
-        <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-          <p className="mb-3 text-xs font-medium text-muted-foreground">Para quem ele mais deu assistência</p>
-          <AssistLinks clubId={clubId} links={given} limit={3} />
-        </div>
-        <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-          <p className="mb-3 text-xs font-medium text-muted-foreground">
-            Com quem mais vence ({MIN_PARTNER_GAMES}+ jogos juntos)
-          </p>
+    <section>
+      <SectionHeading
+        title="Parcerias"
+        description="Assistências confirmadas pelos números de cada partida (a EA não informa lance a lance)."
+      />
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        {boxes.map((box) => (
+          <div key={box.title} className="flex flex-col gap-3.5 border bg-card p-4 sm:p-5">
+            <span className="kicker text-muted-foreground">{box.title}</span>
+            <AssistLinks clubId={clubId} links={box.links} limit={3} />
+          </div>
+        ))}
+        <div className="flex flex-col gap-3.5 border bg-card p-4 sm:p-5">
+          <span className="kicker text-muted-foreground">Com quem mais vence ({MIN_PARTNER_GAMES}+ jogos)</span>
           {partners.length === 0 ? (
             <p className="text-sm text-muted-foreground">Ainda sem jogos suficientes.</p>
           ) : (
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-2.5">
               {partners.map((pair) => {
                 const partner = partnerOf(pair);
                 return (
-                  <li key={partner.id} className="flex items-center justify-between gap-3">
-                    <Link href={`/clubs/${clubId}/players/${partner.id}`} className="truncate font-medium hover:underline">
+                  <li key={partner.id} className="flex items-center justify-between gap-3 font-semibold">
+                    <Link href={`/clubs/${clubId}/players/${partner.id}`} className="truncate hover:text-primary">
                       {partner.name}
                     </Link>
-                    <span className="shrink-0 text-xs text-muted-foreground tabular">
-                      <span className="text-sm font-semibold text-foreground">{formatPercent(pair.winRate)}</span>{" "}
-                      em {pair.games} jogos
+                    <span className="shrink-0 text-sm font-normal text-muted-foreground">
+                      <span className="figure text-xl text-foreground">{formatPercent(pair.winRate)}</span> em{" "}
+                      {pair.games} jogos
                     </span>
                   </li>
                 );
@@ -177,55 +287,7 @@ function Partnerships({
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function PlayerHeader({ player }: { player: Player }) {
-  return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div className="min-w-0">
-        <h2 className="truncate text-2xl font-semibold tracking-tight">{player.name}</h2>
-        <p className="text-sm text-muted-foreground">
-          {player.proName ?? "—"}
-          {player.position && ` · ${player.position}`}
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {!player.isMember && <Badge variant="outline">ex-membro</Badge>}
-        {player.favoritePosition && (
-          <Badge variant="secondary">{formatPositionGroupShort(player.favoritePosition)}</Badge>
-        )}
-        {player.overall !== null && (
-          <Badge variant="secondary" className="tabular">
-            {player.overall} OVR
-          </Badge>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function BestMatch({ entry }: { entry: PlayerMatchEntry }) {
-  const { match, stats } = entry;
-  return (
-    <Link
-      href={`/clubs/${match.clubId}/matches/${match.id}`}
-      className="flex items-center gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-colors hover:bg-accent"
-    >
-      <RatingBadge rating={stats.rating} className="px-2 py-1 text-sm" />
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-muted-foreground">Melhor partida salva</p>
-        <p className="truncate font-medium">vs {match.opponent.name}</p>
-        <p className="text-xs text-muted-foreground">
-          {formatDateTime(match.playedAt)} · {stats.goals} G · {stats.assists} A
-        </p>
-      </div>
-      <span className="flex items-center gap-1.5 font-semibold tabular">
-        <MatchResult result={match.result} size="sm" />
-        {match.goalsFor}–{match.goalsAgainst}
-      </span>
-    </Link>
+    </section>
   );
 }
 
@@ -241,72 +303,61 @@ export default async function PlayerProfilePage({
     listAllClubMatches(club.id),
     listClubPlayerMatchStats(club.id),
   ]);
+  const summary = summarizePlayerHistory(history);
+  const rank = (value: (candidate: Player) => number | null) => rankInSquad(squad, player, value);
   const { links } = computeAssistLinks(clubMatches, clubStats);
   const partners = computePairs(clubMatches, clubStats)
     .filter((pair) => pair.games >= MIN_PARTNER_GAMES)
     .filter((pair) => pair.first.id === player.id || pair.second.id === player.id)
     .sort((a, b) => b.winRate - a.winRate || b.games - a.games)
     .slice(0, 3);
-  const summary = summarizePlayerHistory(history);
-  const rank = (value: (candidate: Player) => number | null) => rankInSquad(squad, player, value);
   const { stats } = player;
+
+  const ranks = {
+    games: rank((p) => p.stats.gamesPlayed),
+    goals: rank((p) => p.stats.goals),
+    assists: rank((p) => p.stats.assists),
+    goalsAndAssists: rank(goalsAndAssists),
+    rating: rank((p) => p.stats.averageRating),
+    passing: rank((p) => p.stats.passSuccessRate),
+    tackles: rank((p) => p.stats.tacklesMade),
+    mvps: rank((p) => p.stats.manOfTheMatch),
+  };
+  const isFirst = (value: SquadRank | null) => value?.position === 1;
 
   return (
     <div className="space-y-10">
       <div className="space-y-4">
-        <Link
-          href={`/clubs/${club.id}/players`}
-          className={buttonVariants({ variant: "ghost", size: "sm", className: "-ml-2" })}
-        >
-          <ArrowLeftIcon data-icon="inline-start" /> Jogadores
-        </Link>
-        <PlayerHeader player={player} />
+        <BackLink href={`/clubs/${club.id}/players`}>Jogadores</BackLink>
+        <PlayerHero
+          club={club}
+          player={player}
+          accolades={{
+            topScorer: isFirst(ranks.goals) && stats.goals > 0,
+            topAssister: isFirst(ranks.assists) && stats.assists > 0,
+            topMvp: isFirst(ranks.mvps) && stats.manOfTheMatch > 0,
+          }}
+        />
       </div>
 
       <section>
-        <SectionHeading title="Temporada" description="Estatísticas no clube registradas pela EA" />
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard
-            label="Jogos"
-            value={formatInteger(stats.gamesPlayed)}
-            hint={rankHint(rank((p) => p.stats.gamesPlayed))}
-          />
-          <StatCard
-            label="Gols"
-            value={formatInteger(stats.goals)}
-            hint={rankHint(rank((p) => p.stats.goals))}
-            tone="primary"
-          />
-          <StatCard
-            label="Assistências"
-            value={formatInteger(stats.assists)}
-            hint={rankHint(rank((p) => p.stats.assists))}
-          />
+        <SectionHeading
+          title="Temporada"
+          action={<span className="text-sm text-muted-foreground">no clube · EA · posição no elenco</span>}
+        />
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+          <StatCard label="Jogos" value={formatInteger(stats.gamesPlayed)} badge={rankBadge(ranks.games)} />
+          <StatCard label="Gols" value={formatInteger(stats.goals)} badge={rankBadge(ranks.goals)} />
+          <StatCard label="Assist." value={formatInteger(stats.assists)} badge={rankBadge(ranks.assists)} />
           <StatCard
             label="G+A"
             value={formatInteger(goalsAndAssists(player))}
-            hint={rankHint(rank(goalsAndAssists))}
+            badge={rankBadge(ranks.goalsAndAssists)}
           />
-          <StatCard
-            label="Nota média"
-            value={formatRating(stats.averageRating)}
-            hint={rankHint(rank((p) => p.stats.averageRating))}
-          />
-          <StatCard
-            label="% passes certos"
-            value={formatPercent(stats.passSuccessRate)}
-            hint={rankHint(rank((p) => p.stats.passSuccessRate))}
-          />
-          <StatCard
-            label="Desarmes"
-            value={formatInteger(stats.tacklesMade)}
-            hint={rankHint(rank((p) => p.stats.tacklesMade))}
-          />
-          <StatCard
-            label="MVPs"
-            value={formatInteger(stats.manOfTheMatch)}
-            hint={rankHint(rank((p) => p.stats.manOfTheMatch))}
-          />
+          <StatCard label="Nota média" value={formatRating(stats.averageRating)} badge={rankBadge(ranks.rating)} />
+          <StatCard label="% passe" value={formatPercent(stats.passSuccessRate)} badge={rankBadge(ranks.passing)} />
+          <StatCard label="Desarmes" value={formatInteger(stats.tacklesMade)} badge={rankBadge(ranks.tackles)} />
+          <StatCard label="MVPs" value={formatInteger(stats.manOfTheMatch)} badge={rankBadge(ranks.mvps)} />
         </div>
       </section>
 
@@ -328,61 +379,46 @@ export default async function PlayerProfilePage({
           />
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <StatCard
-                label="Vitórias com ele em campo"
-                value={formatPercent(summary.winRate)}
-                hint={`${summary.wins}V ${summary.draws}E ${summary.losses}D`}
-              />
-              <StatCard
-                label="Nota média"
-                value={formatRating(summary.averageRating)}
-                hint={`em ${summary.matches} partidas`}
-              />
-              <StatCard
-                label="Gols + assistências"
-                value={`${summary.goals} + ${summary.assists}`}
-                hint={`${summary.shots} chutes`}
-              />
-              <StatCard
-                label="Precisão de passe"
-                value={formatPercent(summary.passAccuracy)}
-                hint={`${summary.tackles} desarmes · ${summary.manOfTheMatch} MVP`}
-              />
-            </div>
+            <HistoryHighlights summary={summary} />
 
-            <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+            <div className="border bg-card p-4 sm:p-5">
               <div className="mb-3 flex items-baseline justify-between gap-3">
-                <h3 className="text-sm font-medium">Nota por partida</h3>
+                <h3 className="font-display text-lg font-bold tracking-[0.06em] uppercase">Nota por partida</h3>
                 <p className="text-xs text-muted-foreground">
-                  últimas {Math.min(CHART_MATCHES, history.length)}
+                  últimas {Math.min(CHART_MATCHES, history.length)} · linha = média
                 </p>
               </div>
               <RatingChart history={history} average={summary.averageRating} />
             </div>
 
             {summary.bestMatch && <BestMatch entry={summary.bestMatch} />}
-
-            <Partnerships
-              clubId={club.id}
-              player={player}
-              received={links.filter((link) => link.toId === player.id)}
-              given={links.filter((link) => link.fromId === player.id)}
-              partners={partners}
-            />
-
-            <div>
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
-                Partidas
-                <span className="flex items-center gap-1 text-xs font-normal text-muted-foreground">
-                  <StarIcon className="size-3 fill-amber-400 text-amber-400" aria-hidden /> = MVP
-                </span>
-              </h3>
-              <PlayerMatchLog entries={history} />
-            </div>
           </>
         )}
       </section>
+
+      {history.length > 0 && (
+        <Partnerships
+          clubId={club.id}
+          player={player}
+          received={links.filter((link) => link.toId === player.id)}
+          given={links.filter((link) => link.fromId === player.id)}
+          partners={partners}
+        />
+      )}
+
+      {history.length > 0 && (
+        <section>
+          <SectionHeading
+            title="Partidas"
+            action={
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <StarIcon className="size-3 fill-amber-400 text-amber-400" aria-hidden /> = MVP
+              </span>
+            }
+          />
+          <PlayerMatchLog entries={history} />
+        </section>
+      )}
     </div>
   );
 }

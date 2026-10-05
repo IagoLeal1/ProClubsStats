@@ -17,15 +17,15 @@ const TONES = { default: "text-foreground", win: "text-win", loss: "text-loss" }
 export function RecordCard({ label, value, detail, href, tone = "default" }: RecordCardProps) {
   const content = (
     <>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className={cn("mt-1 text-2xl font-semibold tracking-tight", TONES[tone])}>{value}</p>
-      {detail && <p className="mt-0.5 truncate text-xs text-muted-foreground">{detail}</p>}
+      <p className="kicker text-muted-foreground">{label}</p>
+      <p className={cn("figure mt-1.5 truncate text-4xl", TONES[tone])}>{value}</p>
+      {detail && <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>}
     </>
   );
-  const className = "block rounded-xl bg-card p-4 ring-1 ring-foreground/10";
+  const className = "block border bg-card p-4 sm:p-5";
 
   return href ? (
-    <Link href={href} className={cn(className, "transition-colors hover:bg-accent")}>
+    <Link href={href} className={cn(className, "transition-colors hover:bg-surface")}>
       {content}
     </Link>
   ) : (

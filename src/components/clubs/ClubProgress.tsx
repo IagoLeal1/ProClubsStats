@@ -1,4 +1,4 @@
-import { LineChart, type LineChartPoint } from "@/components/charts/LineChart";
+import { SeriesChart, type SeriesChartPoint } from "@/components/charts/SeriesChart";
 import { formatDateTime, formatInteger, formatSigned } from "@/lib/format";
 import { roundedScale } from "@/lib/stats/chart-scale";
 import type { ClubProgressPoint } from "@/types/club";
@@ -11,7 +11,7 @@ const axisDate = new Intl.DateTimeFormat("pt-BR", {
 
 type RatedPoint = ClubProgressPoint & { skillRating: number };
 
-function toChartPoints(points: RatedPoint[]): LineChartPoint[] {
+function toChartPoints(points: RatedPoint[]): SeriesChartPoint[] {
   return points.map((point) => ({
     key: `${point.record.gamesPlayed}`,
     value: point.skillRating,
@@ -36,30 +36,27 @@ export function ClubProgress({ points }: { points: ClubProgressPoint[] }) {
   const change = last.skillRating - first.skillRating;
 
   return (
-    <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-sm">
-          <span className="text-2xl font-semibold">{formatInteger(last.skillRating)}</span>
-          {rated.length > 1 && (
-            <span className="ml-2 text-muted-foreground">
-              {formatSigned(change)} desde {axisDate.format(new Date(first.capturedAt))}
-            </span>
-          )}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {rated.length} {rated.length === 1 ? "registro" : "registros"} · um a cada jogo de liga
-        </p>
+    <section className="flex flex-col gap-3 border bg-card p-5 sm:p-6">
+      <span className="kicker text-primary">Evolução do skill rating</span>
+      <div className="flex flex-wrap items-baseline gap-x-3">
+        <span className="figure text-6xl">{formatInteger(last.skillRating)}</span>
+        {rated.length > 1 && (
+          <span className="text-sm text-muted-foreground">
+            {formatSigned(change)} desde {axisDate.format(new Date(first.capturedAt))}
+          </span>
+        )}
       </div>
 
       {rated.length < 2 ? (
         <p className="text-sm text-muted-foreground">
-          Começamos a registrar em {formatDateTime(first.capturedAt)}. A EA só informa o valor
-          atual, então o gráfico aparece a partir da próxima partida de liga.
+          Registrando desde {axisDate.format(new Date(first.capturedAt))}. A EA só informa o valor
+          atual — o gráfico aparece a partir do próximo jogo de liga.
         </p>
       ) : (
-        <LineChart
+        <SeriesChart
           points={toChartPoints(rated)}
           valueFormat="integer"
+          variant="line"
           ariaLabel={`Skill rating de ${formatInteger(first.skillRating)} para ${formatInteger(last.skillRating)}`}
           {...roundedScale(
             rated.map((point) => point.skillRating),
@@ -67,6 +64,6 @@ export function ClubProgress({ points }: { points: ClubProgressPoint[] }) {
           )}
         />
       )}
-    </div>
+    </section>
   );
 }

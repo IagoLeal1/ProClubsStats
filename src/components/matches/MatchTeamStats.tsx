@@ -48,19 +48,19 @@ function ComparisonBar({ club, opponent }: { club: number; opponent: number }) {
 /** Comparação lado a lado das estatísticas das duas equipes. */
 export function MatchTeamStats({ club, opponent }: { club: TeamMatchStats; opponent: TeamMatchStats }) {
   return (
-    <div className="space-y-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-6">
+    <div className="space-y-4 border bg-card p-4 sm:p-6">
       {buildRows(club, opponent).map((row) => {
         const format = row.format ?? formatInteger;
         const clubValue = row.club ?? 0;
         const opponentValue = row.opponent ?? 0;
         return (
           <div key={row.label} className="space-y-1.5">
-            <div className="flex items-center justify-between text-sm tabular">
-              <span className={cn(clubValue > opponentValue && "font-semibold text-primary")}>
+            <div className="flex items-center justify-between gap-3">
+              <span className={cn("figure text-2xl", clubValue > opponentValue && "text-primary")}>
                 {format(row.club)}
               </span>
-              <span className="text-xs text-muted-foreground">{row.label}</span>
-              <span className={cn(opponentValue > clubValue && "font-semibold")}>
+              <span className="kicker text-center text-muted-foreground">{row.label}</span>
+              <span className={cn("figure text-2xl", opponentValue <= clubValue && "text-muted-foreground")}>
                 {format(row.opponent)}
               </span>
             </div>

@@ -9,7 +9,7 @@ import type { MatchResult as MatchResultValue } from "@/types/match";
 
 export type ChartValueFormat = "rating" | "integer";
 
-export interface LineChartPoint {
+export interface SeriesChartPoint {
   key: string;
   value: number;
   /** Rótulo curto para o eixo X (só primeiro e último aparecem). */
@@ -23,9 +23,11 @@ export interface LineChartPoint {
   href?: string;
 }
 
-interface LineChartProps {
+interface SeriesChartProps {
   /** Ordem cronológica: mais antigo → mais recente. */
-  points: LineChartPoint[];
+  points: SeriesChartPoint[];
+  /** "line" para tendência (ex.: skill rating); "bar" para valores por partida. */
+  variant?: "line" | "bar";
   domain: [number, number];
   tickStep: number;
   valueFormat: ChartValueFormat;
@@ -55,13 +57,35 @@ function ticks([min, max]: [number, number], step: number): number[] {
   return values;
 }
 
+/** Coluna com topo arredondado (4px) e base reta. */
+function barPath(x: number, top: number, width: number, baseline: number): string {
+  const radius = Math.min(4, width / 2, Math.max(0, baseline - top));
+  return [
+    `M${x},${baseline}`,
+    `V${top + radius}`,
+    `Q${x},${top} ${x + radius},${top}`,
+    `H${x + width - radius}`,
+    `Q${x + width},${top} ${x + width},${top + radius}`,
+    `V${baseline}`,
+    "Z",
+  ].join(" ");
+}
+
 /**
- * Gráfico de linha com pontos (uma série), seguindo o padrão de dataviz do
- * projeto: linha de 2px, pontos com anel na cor do fundo, grade discreta,
- * rótulo só no último ponto e tooltip por hover, toque ou teclado.
- * A página sempre oferece os mesmos valores em tabela/texto.
+ * Gráfico de uma série (linha ou colunas) no padrão de dataviz do projeto:
+ * marcas finas, grade discreta, rótulo só no destaque e no último ponto e
+ * tooltip por hover, toque ou teclado. A página sempre oferece os mesmos
+ * valores em tabela/texto.
  */
-export function LineChart({ points, domain, tickStep, valueFormat, reference, ariaLabel }: LineChartProps) {
+export function SeriesChart({
+  points,
+  variant = "line",
+  domain,
+  tickStep,
+  valueFormat,
+  reference,
+  ariaLabel,
+}: SeriesChartProps) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -96,8 +120,15 @@ export function LineChart({ points, domain, tickStep, valueFormat, reference, ar
 
   const lastIndex = points.length - 1;
   const activePoint = active === null ? null : points[active];
+  // Colunas: até 24px, sem ocupar a faixa inteira (2px de respiro no mínimo).
+  const barWidth = Math.max(4, Math.min(24, band * 0.6, band - 2));
+  // Rótulos seletivos: o último ponto e, nas colunas, o maior valor.
+  const maxIndex = points.reduce((best, point, index) => (point.value > points[best].value ? index : best), 0);
+  const labeled = [...new Set(variant === "bar" ? [maxIndex, lastIndex] : [lastIndex])].filter(
+    (index) => index >= 0,
+  );
 
-  function open(point: LineChartPoint) {
+  function open(point: SeriesChartPoint) {
     if (point.href) router.push(point.href);
   }
 
@@ -191,36 +222,49 @@ export function LineChart({ points, domain, tickStep, valueFormat, reference, ar
             />
           )}
 
-          <path
-            d={linePath}
-            fill="none"
-            className="stroke-chart-1"
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-
-          {points.map((point, index) => (
-            <circle
-              key={point.key}
-              cx={x(index)}
-              cy={y(point.value)}
-              r={index === active ? DOT_RADIUS + 1.5 : DOT_RADIUS}
-              className="fill-chart-1 stroke-card"
-              strokeWidth={2}
-            />
-          ))}
-
-          {lastIndex >= 0 && active === null && (
-            <text
-              x={x(lastIndex)}
-              y={y(points[lastIndex].value) - 10}
-              textAnchor="middle"
-              className="fill-foreground text-[11px] font-semibold tabular"
-            >
-              {format(points[lastIndex].value)}
-            </text>
+          {variant === "line" ? (
+            <>
+              <path
+                d={linePath}
+                fill="none"
+                className="stroke-chart-1"
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+              {points.map((point, index) => (
+                <circle
+                  key={point.key}
+                  cx={x(index)}
+                  cy={y(point.value)}
+                  r={index === active ? DOT_RADIUS + 1.5 : DOT_RADIUS}
+                  className="fill-chart-1 stroke-card"
+                  strokeWidth={2}
+                />
+              ))}
+            </>
+          ) : (
+            points.map((point, index) => (
+              <path
+                key={point.key}
+                d={barPath(x(index) - barWidth / 2, y(point.value), barWidth, y(yMin))}
+                className={index === active ? "fill-primary" : "fill-chart-1"}
+              />
+            ))
           )}
+
+          {active === null &&
+            labeled.map((index) => (
+              <text
+                key={`label-${index}`}
+                x={x(index)}
+                y={y(points[index].value) - 8}
+                textAnchor="middle"
+                className="fill-foreground font-display text-[13px] font-bold tabular"
+              >
+                {format(points[index].value)}
+              </text>
+            ))}
 
           {points.length > 1 && (
             <>

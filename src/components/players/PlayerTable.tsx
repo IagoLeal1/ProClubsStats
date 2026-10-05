@@ -78,7 +78,7 @@ export function PlayerTable({ players, basePath, sort, direction }: PlayerTableP
   const headProps = { basePath, sort, direction };
 
   return (
-    <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+    <div className="overflow-hidden border bg-card">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
@@ -108,7 +108,7 @@ export function PlayerTable({ players, basePath, sort, direction }: PlayerTableP
                   <div className="min-w-0">
                     <Link
                       href={`/clubs/${player.clubId}/players/${player.id}`}
-                      className="block truncate font-medium hover:underline"
+                      className="block truncate font-semibold hover:text-primary"
                     >
                       {player.name}
                     </Link>

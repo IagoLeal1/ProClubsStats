@@ -6,17 +6,23 @@ import { buttonVariants } from "@/components/ui/button";
 
 import { Container } from "./Container";
 
+export function Logo() {
+  return (
+    <span className="flex items-center gap-2.5">
+      <span className="clip-slant flex h-8 items-center px-4 font-display text-xl font-extrabold text-primary-foreground italic bg-primary">
+        FC
+      </span>
+      <span className="font-display text-xl font-bold tracking-[0.1em]">CLUBS STATS</span>
+    </span>
+  );
+}
+
 export function Header() {
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur supports-backdrop-filter:bg-background/70">
-      <Container className="flex h-14 items-center gap-4">
-        <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold tracking-tight">
-          <span className="grid size-7 place-items-center rounded-md bg-primary text-[11px] font-black text-primary-foreground">
-            FC
-          </span>
-          <span>
-            Clubs <span className="text-primary">Stats</span>
-          </span>
+    <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur supports-backdrop-filter:bg-background/75">
+      <Container className="flex h-16 items-center gap-6">
+        <Link href="/" aria-label="FC Clubs Stats — início" className="shrink-0">
+          <Logo />
         </Link>
 
         <div className="ml-auto hidden w-full max-w-sm md:block">
@@ -26,7 +32,7 @@ export function Header() {
         <Link
           href="/"
           aria-label="Pesquisar clube"
-          className={buttonVariants({ variant: "ghost", size: "icon", className: "ml-auto md:hidden" })}
+          className={buttonVariants({ variant: "ghost", size: "icon-lg", className: "ml-auto md:hidden" })}
         >
           <SearchIcon />
         </Link>

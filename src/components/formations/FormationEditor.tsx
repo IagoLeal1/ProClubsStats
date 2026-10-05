@@ -139,17 +139,22 @@ export function FormationEditor({ clubId, members, formation }: FormationEditorP
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-3">
         <label className="min-w-48 flex-1 space-y-1.5 sm:max-w-xs">
-          <span className="text-xs font-medium text-muted-foreground">Nome</span>
-          <Input value={name} maxLength={60} onChange={(event) => setName(event.target.value)} />
+          <span className="kicker block text-muted-foreground">Nome</span>
+          <Input
+            value={name}
+            maxLength={60}
+            onChange={(event) => setName(event.target.value)}
+            className="h-11 rounded-sm bg-card font-display text-xl font-bold"
+          />
         </label>
         <label className="space-y-1.5">
-          <span className="block text-xs font-medium text-muted-foreground">Esquema</span>
+          <span className="kicker block text-muted-foreground">Esquema</span>
           <select
             value={formationType}
             onChange={(event) => {
               if (isFormationType(event.target.value)) changeFormationType(event.target.value);
             }}
-            className="h-8 rounded-lg border border-input bg-input/30 px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="h-11 rounded-sm border bg-card px-3 font-display text-xl font-bold outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             {FORMATION_TYPES.map((type) => (
               <option key={type} value={type}>
@@ -159,7 +164,11 @@ export function FormationEditor({ clubId, members, formation }: FormationEditorP
           </select>
         </label>
         <div className="flex items-center gap-3">
-          <Button onClick={handleSave} disabled={saving || !dirty || !name.trim()}>
+          <Button
+            onClick={handleSave}
+            disabled={saving || !dirty || !name.trim()}
+            className="clip-slant h-11 rounded-none px-6 font-display text-base font-extrabold tracking-[0.08em] uppercase"
+          >
             {saving ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
             {saving ? "Salvando…" : formation ? "Salvar alterações" : "Criar formação"}
           </Button>
@@ -199,7 +208,7 @@ export function FormationEditor({ clubId, members, formation }: FormationEditorP
             Clique em uma posição no campo ou na lista para escolher o jogador, o arquétipo e os
             pontos fortes.
           </p>
-          <ul className="divide-y rounded-xl bg-card ring-1 ring-foreground/10">
+          <ul className="divide-y border bg-card">
             {slots.map((slot) => {
               const position = template[slot.slotIndex];
               const archetype = findArchetype(slot.archetype);
@@ -210,10 +219,10 @@ export function FormationEditor({ clubId, members, formation }: FormationEditorP
                     onClick={() => setEditingIndex(slot.slotIndex)}
                     className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50"
                   >
-                    <span className="mt-0.5 w-10 shrink-0 rounded bg-secondary py-0.5 text-center text-[11px] font-semibold">
+                    <span className="clip-slant-sm w-11 shrink-0 bg-surface py-0.5 text-center font-display text-sm font-bold">
                       {position.position}
                     </span>
-                    <span className="min-w-0 flex-1">
+                    <span className="min-w-0 flex-1 pt-0.5">
                       <span className="block truncate text-sm font-medium">
                         {slot.playerId ? memberNames.get(slot.playerId) : <span className="text-muted-foreground">IA</span>}
                         {archetype && <span className="font-normal text-primary"> · {archetype.name}</span>}

@@ -43,7 +43,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
   return (
     <Container className="space-y-8 pt-8">
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Pesquisar clube</h1>
+        <h1 className="figure text-5xl uppercase sm:text-6xl">Pesquisar clube</h1>
         <ClubSearchForm variant="hero" defaultQuery={q} defaultPlatform={platform} />
       </div>
       {q ? (
@@ -95,7 +95,7 @@ async function SearchResults({ query, platform }: { query: string; platform: Pla
       )}
 
       {canAddById && (
-        <div className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-medium">Clube com ID {query}</p>
             <p className="text-xs text-muted-foreground">
@@ -109,16 +109,16 @@ async function SearchResults({ query, platform }: { query: string; platform: Pla
       {storedClubs.length > 0 && (
         <section>
           <SectionHeading title="Já acompanhados aqui" description="Abra direto o histórico salvo." />
-          <ul className="grid gap-3 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {storedClubs.map((club) => (
               <li key={club.id}>
                 <Link
                   href={`/clubs/${club.id}`}
-                  className="flex items-center gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-colors hover:bg-accent"
+                  className="flex items-center gap-3 border bg-card p-4 transition-colors hover:bg-surface"
                 >
                   <ClubCrest name={club.name} src={club.crestUrl} size={40} />
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{club.name}</p>
+                    <p className="truncate font-display text-xl font-bold uppercase">{club.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {club.lastSyncedAt ? `Atualizado ${formatRelativeTime(club.lastSyncedAt)}` : "Nunca sincronizado"}
                     </p>

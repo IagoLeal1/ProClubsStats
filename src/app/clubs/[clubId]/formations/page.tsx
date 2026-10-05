@@ -36,7 +36,7 @@ export default async function ClubFormationsPage({ params }: PageProps<"/clubs/[
       />
 
       {formations.length === 0 ? (
-        <div className="grid items-center gap-6 rounded-xl border border-dashed p-6 sm:grid-cols-[minmax(0,16rem)_1fr]">
+        <div className="grid items-center gap-6 border border-dashed p-6 sm:grid-cols-[minmax(0,16rem)_1fr]">
           <FootballPitch className="mx-auto max-w-64 opacity-60" />
           <div className="space-y-3">
             <p className="font-medium">Nenhuma formação ainda</p>
@@ -51,16 +51,16 @@ export default async function ClubFormationsPage({ params }: PageProps<"/clubs/[
           </div>
         </div>
       ) : (
-        <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {formations.map((formation) => (
             <li key={formation.id}>
               <Link
                 href={`/clubs/${club.id}/formations/${formation.id}`}
-                className="block space-y-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-colors hover:bg-accent"
+                className="block space-y-3 border bg-card p-4 transition-colors hover:bg-surface"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{formation.name}</p>
+                    <p className="truncate font-display text-xl font-bold uppercase">{formation.name}</p>
                     <p className="text-xs text-muted-foreground">
                       Atualizada {formatRelativeTime(formation.updatedAt)}
                     </p>

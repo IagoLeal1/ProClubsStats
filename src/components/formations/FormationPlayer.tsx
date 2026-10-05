@@ -23,24 +23,27 @@ export function FormationPlayer({ position, name, detail, x, y, onSelect, select
     <>
       <span
         className={cn(
-          "grid size-9 place-items-center rounded-full border-2 text-[10px] font-bold shadow-md transition-transform",
-          name ? "border-white/85 bg-background" : "border-white/40 bg-background/60 text-muted-foreground",
-          selected && "scale-110 border-primary",
-          onSelect && "group-hover:scale-110 group-hover:border-primary",
+          "grid size-[38px] place-items-center rounded-full border-2 font-display text-[13px] font-extrabold transition-transform",
+          selected
+            ? "border-primary bg-primary text-primary-foreground shadow-[0_0_0_4px_rgb(34_197_94/0.3)]"
+            : name
+              ? "border-foreground bg-background text-foreground"
+              : "border-input bg-background/60 text-muted-foreground",
+          onSelect && !selected && "group-hover:scale-110 group-hover:border-primary",
         )}
       >
         {position}
       </span>
       <span
         className={cn(
-          "max-w-full truncate rounded bg-background/85 px-1.5 py-0.5 text-[10px] font-medium sm:text-xs",
+          "max-w-full truncate bg-background px-1.5 py-px text-[11px] font-semibold",
           !name && "text-muted-foreground",
         )}
       >
         {name ?? "IA"}
       </span>
       {detail && (
-        <span className="max-w-full truncate rounded bg-primary/90 px-1 text-[9px] font-semibold text-primary-foreground sm:text-[10px]">
+        <span className="max-w-full truncate bg-primary px-1.5 font-display text-[11px] font-bold tracking-[0.04em] text-primary-foreground">
           {detail}
         </span>
       )}
@@ -48,7 +51,7 @@ export function FormationPlayer({ position, name, detail, x, y, onSelect, select
   );
 
   const className =
-    "absolute flex w-[4.5rem] -translate-x-1/2 translate-y-1/2 flex-col items-center gap-0.5 sm:w-20";
+    "absolute flex w-[4.75rem] -translate-x-1/2 translate-y-1/2 flex-col items-center gap-0.5 sm:w-20";
   const style = { left: `${clamp(x)}%`, bottom: `${clamp(y)}%` };
 
   if (!onSelect) {
@@ -64,7 +67,7 @@ export function FormationPlayer({ position, name, detail, x, y, onSelect, select
       type="button"
       onClick={onSelect}
       aria-label={`${position}: ${name ?? "IA"}${detail ? `, ${detail}` : ""}. Editar vaga`}
-      className={cn(className, "group rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring")}
+      className={cn(className, "group rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring")}
       style={style}
     >
       {content}

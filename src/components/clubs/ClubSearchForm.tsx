@@ -31,7 +31,7 @@ export function ClubSearchForm({
       </label>
       <div className="relative flex-1">
         <SearchIcon
-          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+          className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
           aria-hidden
         />
         <Input
@@ -44,7 +44,7 @@ export function ClubSearchForm({
           defaultValue={defaultQuery}
           placeholder={isHero ? "Pesquise seu clube" : "Pesquisar clube"}
           autoComplete="off"
-          className={cn("pl-9", isHero && "h-11 text-base")}
+          className={cn("h-11 rounded-sm bg-card pl-10 text-base", !isHero && "h-10 text-sm")}
         />
       </div>
 
@@ -57,7 +57,7 @@ export function ClubSearchForm({
             id="club-search-platform"
             name="platform"
             defaultValue={defaultPlatform}
-            className="h-11 rounded-lg border border-input bg-input/30 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="h-11 rounded-sm border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             {PLATFORMS.map((platform) => (
               <option key={platform} value={platform}>
@@ -65,7 +65,10 @@ export function ClubSearchForm({
               </option>
             ))}
           </select>
-          <Button type="submit" className="h-11 px-5 text-sm">
+          <Button
+            type="submit"
+            className="clip-slant h-11 rounded-none px-7 font-display text-base font-extrabold tracking-[0.08em] uppercase"
+          >
             Pesquisar
           </Button>
         </>

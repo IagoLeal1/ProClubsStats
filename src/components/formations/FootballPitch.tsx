@@ -1,21 +1,21 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Campo de futebol vertical (proporção 68 × 105). O próprio gol fica embaixo.
+ * Prancheta tática vertical (proporção 68 × 105). O próprio gol fica embaixo.
  * Os filhos são posicionados em porcentagem (ver FormationPlayer).
  */
 export function FootballPitch({ children, className }: { children?: React.ReactNode; className?: string }) {
   return (
     <div
       className={cn(
-        "relative aspect-[68/105] w-full overflow-hidden rounded-xl border-2 border-pitch-line bg-pitch",
+        "relative aspect-[68/105] w-full overflow-hidden border-2 border-pitch-line bg-pitch",
         className,
       )}
     >
       {/* Faixas do gramado */}
       <div
         aria-hidden
-        className="absolute inset-0 bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_7.14%,rgb(255_255_255/0.035)_7.14%,rgb(255_255_255/0.035)_14.28%)]"
+        className="absolute inset-0 bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_7.14%,var(--pitch-stripe)_7.14%,var(--pitch-stripe)_14.28%)]"
       />
       {/* Linha do meio e círculo central */}
       <div aria-hidden className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-pitch-line" />

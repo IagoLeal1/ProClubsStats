@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { TrophyIcon } from "lucide-react";
 
 import { EmptyState } from "@/components/layout/EmptyState";
@@ -145,7 +146,7 @@ export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clu
 
       <section>
         <SectionHeading title="Recordes individuais" description="Melhores atuações numa única partida" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <PerformanceList
             clubId={club.id}
             title="Mais gols"
@@ -164,16 +165,18 @@ export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clu
             records={topPerformances(stats, matchesById, (stat) => stat.stats.rating)}
             formatValue={formatRating}
           />
-          <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-            <p className="text-xs font-medium text-muted-foreground">Hat-tricks (3+ gols)</p>
+          <div className="border bg-card p-4">
+            <p className="kicker text-muted-foreground">Hat-tricks (3+ gols)</p>
             {hatTricks.length === 0 ? (
               <p className="mt-2 text-sm text-muted-foreground">Nenhum hat-trick ainda.</p>
             ) : (
-              <ul className="mt-2 space-y-1.5 text-sm">
+              <ul className="mt-3 space-y-2.5">
                 {hatTricks.map((entry) => (
-                  <li key={entry.playerId} className="flex justify-between gap-3">
-                    <span className="truncate font-medium">{entry.playerName}</span>
-                    <span className="font-semibold tabular">{entry.count}</span>
+                  <li key={entry.playerId} className="flex items-center justify-between gap-3">
+                    <Link href={`/clubs/${club.id}/players/${entry.playerId}`} className="truncate font-semibold hover:text-primary">
+                      {entry.playerName}
+                    </Link>
+                    <span className="figure text-3xl text-primary">{entry.count}</span>
                   </li>
                 ))}
               </ul>
@@ -185,24 +188,24 @@ export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clu
       <section className="space-y-6">
         <SectionHeading title="Duplas" />
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="space-y-3">
             <div>
-              <h3 className="text-sm font-medium">Conexões de gol</h3>
+              <h3 className="font-display text-lg font-bold tracking-[0.06em] uppercase">Conexões de gol</h3>
               <p className="text-xs text-muted-foreground">
                 Quem deu assistência para quem. A EA não informa lance a lance, então contamos só o
                 que dá para garantir pelos números de cada partida —{" "}
                 {assistLinks.confirmedAssists} de {assistLinks.totalAssists} assistências confirmadas.
               </p>
             </div>
-            <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+            <div className="border bg-card p-4">
               <AssistLinks clubId={club.id} links={assistLinks.links} />
             </div>
           </div>
 
           <div className="space-y-3">
             <div>
-              <h3 className="text-sm font-medium">Juntos em campo</h3>
+              <h3 className="font-display text-lg font-bold tracking-[0.06em] uppercase">Juntos em campo</h3>
               <p className="text-xs text-muted-foreground">
                 Campanha do clube com os dois jogando ({MIN_PAIR_GAMES}+ jogos juntos).
               </p>

@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeftIcon } from "lucide-react";
+import { StarIcon } from "lucide-react";
 
+import { BackLink } from "@/components/layout/BackLink";
 import { ShareButton } from "@/components/layout/ShareButton";
 import { SectionHeading } from "@/components/layout/SectionHeading";
-import { MatchCard } from "@/components/matches/MatchCard";
+import { MatchCard, MatchList } from "@/components/matches/MatchCard";
 import { MatchResult } from "@/components/matches/MatchResult";
 import { RatingBadge } from "@/components/players/RatingBadge";
-import { RecordCard } from "@/components/records/RecordCard";
-import { StatCard } from "@/components/stats/StatCard";
-import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -20,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { formatPercent, formatRating, formatSigned, formatTime, formatWeekdayDate } from "@/lib/format";
 import type { GameSession, SessionPlayerLine, SessionSummary } from "@/lib/stats/sessions";
+import { cn } from "@/lib/utils";
 
 import { loadSession } from "./load-session";
 
@@ -53,9 +52,56 @@ export async function generateMetadata({
   };
 }
 
-function highlightDetail(line: SessionPlayerLine, extra: string) {
-  return `${extra} · nota ${formatRating(line.averageRating)}`;
+interface Highlight {
+  label: string;
+  value: string;
+  detail: string;
+  href?: string;
+  tone?: "primary" | "muted" | "loss";
 }
+
+function buildHighlights(
+  session: GameSession,
+  summary: SessionSummary,
+  profile: (line: SessionPlayerLine) => string,
+): Highlight[] {
+  const { record } = session;
+  const highlights: Highlight[] = [];
+  if (summary.topScorer) {
+    highlights.push({
+      label: "Artilheiro",
+      value: summary.topScorer.playerName,
+      detail: plural(summary.topScorer.goals, "gol", "gols"),
+      href: profile(summary.topScorer),
+    });
+  }
+  if (summary.topAssister) {
+    highlights.push({
+      label: "Garçom",
+      value: summary.topAssister.playerName,
+      detail: plural(summary.topAssister.assists, "assistência", "assistências"),
+      href: profile(summary.topAssister),
+    });
+  }
+  highlights.push({
+    label: "Saldo",
+    value: formatSigned(record.goalsFor - record.goalsAgainst),
+    detail: `${record.goalsFor} feitos, ${record.goalsAgainst} sofridos`,
+    tone: "muted",
+  });
+  if (summary.worstRating && summary.worstRating.playerId !== summary.bestRating?.playerId) {
+    highlights.push({
+      label: "Nota mais baixa",
+      value: summary.worstRating.playerName,
+      detail: `média ${formatRating(summary.worstRating.averageRating)}`,
+      href: profile(summary.worstRating),
+      tone: "loss",
+    });
+  }
+  return highlights;
+}
+
+const DETAIL_TONES = { primary: "text-primary", muted: "text-muted-foreground", loss: "text-loss" } as const;
 
 export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]/sessions/[sessionId]">) {
   const { clubId, sessionId } = await params;
@@ -64,100 +110,84 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
   const games = session.matches.length;
   const pointsRate = ((record.wins * 3 + record.draws) / (games * 3)) * 100;
   const profile = (line: SessionPlayerLine) => `/clubs/${club.id}/players/${line.playerId}`;
+  const highlights = buildHighlights(session, summary, profile);
 
   return (
     <div className="space-y-8">
-      <Link
-        href={`/clubs/${club.id}/matches`}
-        className={buttonVariants({ variant: "ghost", size: "sm", className: "-ml-2" })}
-      >
-        <ArrowLeftIcon data-icon="inline-start" /> Partidas
-      </Link>
+      <BackLink href={`/clubs/${club.id}/matches`}>Partidas</BackLink>
 
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold tracking-widest text-primary uppercase">Resumo da noite</p>
-          <h2 className="text-2xl font-semibold tracking-tight capitalize">
-            {formatWeekdayDate(session.startedAt)}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {formatTime(session.startedAt)}–{formatTime(session.endedAt)} · {plural(games, "partida", "partidas")}
+      <section className="relative overflow-hidden border bg-card px-5 py-7 sm:px-8 sm:py-9">
+        <div aria-hidden className="pointer-events-none absolute top-1/2 left-1/2 size-[360px] -translate-1/2 rounded-full border-2 border-[#1e2026]" />
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 h-0.5 bg-[#1e2026]" />
+        <div className="relative flex flex-col gap-4">
+          <span className="kicker text-primary">Resumo da noite</span>
+          <div className="space-y-1">
+            <h2 className="figure text-5xl uppercase sm:text-7xl">{formatWeekdayDate(session.startedAt)}</h2>
+            <p className="text-muted-foreground">
+              {formatTime(session.startedAt)}–{formatTime(session.endedAt)} · {plural(games, "partida", "partidas")}
+            </p>
+          </div>
+          <p className="figure flex flex-wrap items-baseline gap-x-4 text-7xl sm:text-8xl">
+            <span className="text-win">{record.wins}V</span>
+            <span className="text-draw">{record.draws}E</span>
+            <span className="text-loss">{record.losses}D</span>
           </p>
+          <p className="text-muted-foreground">
+            {record.goalsFor} gols feitos · {record.goalsAgainst} sofridos · {formatPercent(pointsRate)} de
+            aproveitamento
+          </p>
+          <div className="flex flex-wrap gap-1.5" aria-label="Resultados da noite em ordem">
+            {session.matches.map((match) => (
+              <MatchResult key={match.id} result={match.result} size="sm" />
+            ))}
+          </div>
         </div>
-        <ShareButton text={shareText(club.name, session, summary)} title={`${club.name} · resumo da noite`} />
-      </div>
+      </section>
 
-      <div className="flex flex-wrap gap-1.5" aria-label="Resultados da noite em ordem">
-        {session.matches.map((match) => (
-          <MatchResult key={match.id} result={match.result} size="sm" />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <StatCard label="Campanha" value={recordLabel(session)} hint={`${formatPercent(pointsRate)} de aproveitamento`} />
-        <StatCard
-          label="Gols"
-          value={`${record.goalsFor}–${record.goalsAgainst}`}
-          hint={`saldo ${formatSigned(record.goalsFor - record.goalsAgainst)}`}
-        />
-        <StatCard
-          label="Vitórias"
-          value={formatPercent((record.wins / games) * 100)}
-          hint={plural(record.wins, "vitória", "vitórias")}
-          tone="win"
-        />
-      </div>
-
-      <section>
-        <SectionHeading title="Destaques" description="Notas médias contam para quem jogou ao menos metade da noite" />
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          {summary.mvp && (
-            <RecordCard
-              label="MVP da noite"
-              value={summary.mvp.playerName}
-              detail={highlightDetail(summary.mvp, `${summary.mvp.mvps}× MVP`)}
-              href={profile(summary.mvp)}
-              tone="win"
+      <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        {summary.mvp && (
+          <Link
+            href={profile(summary.mvp)}
+            className="relative flex flex-col justify-end gap-1 overflow-hidden bg-primary p-6 text-primary-foreground transition-opacity hover:opacity-95"
+          >
+            <StarIcon
+              aria-hidden
+              className="pointer-events-none absolute -top-6 -right-6 size-40 stroke-[1] opacity-20"
             />
-          )}
-          {summary.topScorer && (
-            <RecordCard
-              label="Artilheiro"
-              value={summary.topScorer.playerName}
-              detail={plural(summary.topScorer.goals, "gol", "gols")}
-              href={profile(summary.topScorer)}
-            />
-          )}
-          {summary.topAssister && (
-            <RecordCard
-              label="Garçom"
-              value={summary.topAssister.playerName}
-              detail={plural(summary.topAssister.assists, "assistência", "assistências")}
-              href={profile(summary.topAssister)}
-            />
-          )}
-          {summary.bestRating && (
-            <RecordCard
-              label="Melhor nota média"
-              value={summary.bestRating.playerName}
-              detail={`nota ${formatRating(summary.bestRating.averageRating)}`}
-              href={profile(summary.bestRating)}
-            />
-          )}
-          {summary.worstRating && summary.worstRating.playerId !== summary.bestRating?.playerId && (
-            <RecordCard
-              label="Menor nota média"
-              value={summary.worstRating.playerName}
-              detail={`nota ${formatRating(summary.worstRating.averageRating)}`}
-              href={profile(summary.worstRating)}
-            />
-          )}
+            <span className="kicker">MVP da noite</span>
+            <span className="figure text-5xl break-all uppercase">{summary.mvp.playerName}</span>
+            <span className="font-semibold">
+              {summary.mvp.mvps}× MVP · nota média {formatRating(summary.mvp.averageRating)} em{" "}
+              {plural(summary.mvp.games, "jogo", "jogos")}
+            </span>
+          </Link>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          {highlights.map((highlight) => {
+            const content = (
+              <>
+                <span className="kicker text-muted-foreground">{highlight.label}</span>
+                <span className="truncate font-display text-2xl leading-tight font-bold">{highlight.value}</span>
+                <span className={cn("text-sm", DETAIL_TONES[highlight.tone ?? "primary"])}>{highlight.detail}</span>
+              </>
+            );
+            const className = "flex min-w-0 flex-col gap-1 border bg-card p-4";
+            return highlight.href ? (
+              <Link key={highlight.label} href={highlight.href} className={cn(className, "transition-colors hover:bg-surface")}>
+                {content}
+              </Link>
+            ) : (
+              <div key={highlight.label} className={className}>
+                {content}
+              </div>
+            );
+          })}
         </div>
       </section>
 
       <section>
-        <SectionHeading title="Jogadores da noite" />
-        <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+        <SectionHeading title="Jogadores da noite" description="Notas médias valem para quem jogou ao menos metade da noite" />
+        <div className="border bg-card">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -166,22 +196,22 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
                 <TableHead className="text-right">G</TableHead>
                 <TableHead className="text-right">A</TableHead>
                 <TableHead className="text-right">MVP</TableHead>
-                <TableHead className="text-right">Nota</TableHead>
+                <TableHead className="pr-4 text-right">Nota</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {summary.players.map((line) => (
                 <TableRow key={line.playerId}>
-                  <TableCell className="pl-4 font-medium">
-                    <Link href={profile(line)} className="hover:underline">
+                  <TableCell className="pl-4 font-semibold">
+                    <Link href={profile(line)} className="hover:text-primary">
                       {line.playerName}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-right tabular">{line.games}</TableCell>
+                  <TableCell className="text-right text-muted-foreground tabular">{line.games}</TableCell>
                   <TableCell className="text-right tabular">{line.goals}</TableCell>
                   <TableCell className="text-right tabular">{line.assists}</TableCell>
                   <TableCell className="text-right tabular">{line.mvps}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="pr-4 text-right">
                     <RatingBadge rating={line.averageRating} />
                   </TableCell>
                 </TableRow>
@@ -192,13 +222,20 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
       </section>
 
       <section>
-        <SectionHeading title="Partidas da noite" description="Em ordem, da primeira à última" />
-        <div className="space-y-2">
+        <SectionHeading title="Jogo a jogo" description="Em ordem, da primeira à última" />
+        <MatchList>
           {session.matches.map((match) => (
-            <MatchCard key={match.id} match={match} />
+            <MatchCard key={match.id} match={match} dateStyle="time" />
           ))}
-        </div>
+        </MatchList>
       </section>
+
+      <ShareButton
+        text={shareText(club.name, session, summary)}
+        title={`${club.name} · resumo da noite`}
+        label="Mandar no grupo"
+        className="w-full sm:w-auto"
+      />
     </div>
   );
 }

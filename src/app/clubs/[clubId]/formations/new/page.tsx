@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeftIcon } from "lucide-react";
 
 import { FormationEditor } from "@/components/formations/FormationEditor";
-import { buttonVariants } from "@/components/ui/button";
+import { BackLink } from "@/components/layout/BackLink";
 
 import { loadClub } from "../../load-club";
 import { listEditorMembers } from "../editor-members";
@@ -17,13 +15,8 @@ export default async function NewFormationPage({ params }: PageProps<"/clubs/[cl
 
   return (
     <div className="space-y-6">
-      <Link
-        href={`/clubs/${club.id}/formations`}
-        className={buttonVariants({ variant: "ghost", size: "sm", className: "-ml-2" })}
-      >
-        <ArrowLeftIcon data-icon="inline-start" /> Formações
-      </Link>
-      <h2 className="text-xl font-semibold tracking-tight">Nova formação</h2>
+      <BackLink href={`/clubs/${club.id}/formations`}>Formações</BackLink>
+      <h2 className="figure text-5xl uppercase">Nova formação</h2>
       <FormationEditor clubId={club.id} members={members} formation={null} />
     </div>
   );

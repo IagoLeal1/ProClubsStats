@@ -21,15 +21,15 @@ export function PairsTable({ clubId, pairs }: PairsTableProps) {
   const profile = (id: string) => `/clubs/${clubId}/players/${id}`;
 
   return (
-    <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+    <div className="overflow-hidden border bg-card">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className="pl-4">Dupla</TableHead>
-            <TableHead className="text-right">Jogos</TableHead>
+            <TableHead className="text-right" title="Jogos juntos">J</TableHead>
             <TableHead className="text-right">V-E-D</TableHead>
-            <TableHead className="text-right">% vitórias</TableHead>
-            <TableHead className="text-right" title="Gols + assistências dos dois juntos">
+            <TableHead className="text-right" title="Porcentagem de vitórias">% Vit.</TableHead>
+            <TableHead className="text-right max-sm:hidden" title="Gols + assistências dos dois juntos">
               G+A
             </TableHead>
           </TableRow>
@@ -38,11 +38,11 @@ export function PairsTable({ clubId, pairs }: PairsTableProps) {
           {pairs.map((pair) => (
             <TableRow key={`${pair.first.id}|${pair.second.id}`}>
               <TableCell className="pl-4 font-medium">
-                <Link href={profile(pair.first.id)} className="hover:underline">
+                <Link href={profile(pair.first.id)} className="hover:text-primary">
                   {pair.first.name}
                 </Link>
                 <span className="text-muted-foreground"> + </span>
-                <Link href={profile(pair.second.id)} className="hover:underline">
+                <Link href={profile(pair.second.id)} className="hover:text-primary">
                   {pair.second.name}
                 </Link>
               </TableCell>
@@ -50,8 +50,8 @@ export function PairsTable({ clubId, pairs }: PairsTableProps) {
               <TableCell className="text-right tabular">
                 {pair.wins}-{pair.draws}-{pair.losses}
               </TableCell>
-              <TableCell className="text-right font-semibold tabular">{formatPercent(pair.winRate)}</TableCell>
-              <TableCell className="text-right tabular">{pair.goalContributions}</TableCell>
+              <TableCell className="text-right"><span className="figure text-xl text-primary">{formatPercent(pair.winRate)}</span></TableCell>
+              <TableCell className="text-right tabular max-sm:hidden">{pair.goalContributions}</TableCell>
             </TableRow>
           ))}
         </TableBody>

@@ -38,7 +38,7 @@ const GROUP_LABELS: Record<PositionGroup, string> = {
 };
 
 const fieldClass =
-  "h-9 w-full rounded-lg border border-input bg-input/30 px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "h-11 w-full rounded-sm border bg-background px-3 text-[15px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 interface SlotDialogProps {
   open: boolean;
@@ -82,9 +82,10 @@ export function SlotDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+      {/* No celular abre como painel que sobe do rodapé; no computador, centralizado. */}
+      <DialogContent className="max-h-[88dvh] gap-5 overflow-y-auto rounded-sm border-t-2 border-primary bg-card p-5 sm:max-w-lg max-sm:top-auto max-sm:bottom-0 max-sm:left-0 max-sm:w-full max-sm:max-w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-t-[14px] max-sm:rounded-b-none max-sm:pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="figure text-3xl uppercase">
             {template.position} · vaga {slot.slotIndex + 1}
           </DialogTitle>
           <DialogDescription>
@@ -94,7 +95,7 @@ export function SlotDialog({
 
         <div className="space-y-5">
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-muted-foreground">Jogador</span>
+            <span className="kicker text-muted-foreground">Jogador</span>
             <select
               className={fieldClass}
               value={slot.playerId ?? ""}
@@ -117,7 +118,7 @@ export function SlotDialog({
 
           <div className="space-y-1.5">
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Arquétipo</span>
+              <span className="kicker text-muted-foreground">Arquétipo</span>
               <select
                 className={fieldClass}
                 value={slot.archetype ?? ""}
@@ -141,25 +142,31 @@ export function SlotDialog({
               </select>
             </label>
             {archetype && (
-              <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs">
-                <p>{archetype.description}</p>
-                <p className="mt-1 text-muted-foreground">
-                  Estilo de jogo de assinatura: <span className="text-foreground">{archetype.signature}</span>
-                </p>
+              <div className="flex gap-3 border bg-background p-3 text-sm">
+                <span className="figure clip-slant flex size-10 shrink-0 items-center justify-center bg-primary text-lg text-primary-foreground">
+                  {archetype.name.slice(0, 2).toUpperCase()}
+                </span>
+                <div className="space-y-0.5">
+                  <p>{archetype.description}</p>
+                  <p className="text-muted-foreground">
+                    Estilo de jogo de assinatura:{" "}
+                    <span className="font-semibold text-foreground">{archetype.signature}</span>
+                  </p>
+                </div>
               </div>
             )}
           </div>
 
           <fieldset className="space-y-3">
-            <legend className="flex w-full items-baseline justify-between text-xs font-medium text-muted-foreground">
+            <legend className="kicker flex w-full items-baseline justify-between text-muted-foreground">
               <span>Pontos fortes</span>
-              <span className="tabular" aria-live="polite">
+              <span className="text-primary tabular" aria-live="polite">
                 {slot.strengths.length}/{MAX_STRENGTHS}
               </span>
             </legend>
             {groups.map((group) => (
               <div key={group.id} className="space-y-1.5">
-                <p className="text-[11px] tracking-wide text-muted-foreground uppercase">{group.label}</p>
+                <p className="text-xs text-muted-foreground">{group.label}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {group.attributes.map((attribute) => {
                     const selected = slot.strengths.includes(attribute.id);
@@ -171,10 +178,10 @@ export function SlotDialog({
                         disabled={!selected && atLimit}
                         onClick={() => toggleStrength(attribute.id)}
                         className={cn(
-                          "rounded-full border px-2.5 py-1 text-xs transition-colors disabled:opacity-40",
+                          "min-h-9 rounded-full border px-3 text-sm font-semibold transition-colors disabled:opacity-35",
                           selected
-                            ? "border-primary bg-primary/15 text-primary"
-                            : "text-muted-foreground hover:text-foreground",
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-input text-foreground hover:border-primary",
                         )}
                       >
                         {attribute.label}
@@ -187,24 +194,31 @@ export function SlotDialog({
           </fieldset>
 
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-muted-foreground">Observação</span>
+            <span className="kicker text-muted-foreground">Observação</span>
             <Textarea
               value={slot.notes}
               maxLength={280}
               onChange={(event) => onChange({ notes: event.target.value })}
               placeholder="Ex.: fica mais preso na marcação, cobra os escanteios"
+              className="rounded-sm bg-background"
             />
           </label>
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-between">
+        <DialogFooter className="-mx-5 -mb-5 grid grid-cols-2 gap-2.5 border-t-0 bg-transparent p-5 pt-0 sm:flex sm:justify-between">
           <Button
-            variant="ghost"
+            variant="outline"
+            className="h-12 rounded-sm font-display text-base font-bold tracking-[0.08em] uppercase"
             onClick={() => onChange({ playerId: null, archetype: null, strengths: [], notes: "" })}
           >
             Limpar vaga
           </Button>
-          <Button onClick={() => onOpenChange(false)}>Pronto</Button>
+          <Button
+            className="clip-slant h-12 rounded-none px-8 font-display text-base font-extrabold tracking-[0.08em] uppercase"
+            onClick={() => onOpenChange(false)}
+          >
+            Pronto
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

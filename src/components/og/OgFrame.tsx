@@ -12,38 +12,59 @@ import { join } from "node:path";
 export const OG_SIZE = { width: 1200, height: 630 };
 
 export const OG_COLORS = {
-  background: "#0a0d12",
-  card: "#13171e",
-  border: "#21272f",
-  foreground: "#f0f2f5",
-  muted: "#959ca5",
-  primary: "#4add8c",
-  win: "#3ec873",
-  draw: "#979fab",
-  loss: "#f4514f",
+  background: "#0b0c0e",
+  card: "#15171b",
+  surface: "#1e2026",
+  border: "#2a2d34",
+  foreground: "#f2f4f7",
+  muted: "#9ba1ac",
+  primary: "#22c55e",
+  win: "#22c55e",
+  draw: "#8e949e",
+  loss: "#ff5a4f",
 } as const;
 
-type OgFont = { name: string; data: Buffer; weight: 400 | 700; style: "normal" };
+/** Família do texto corrido e família condensada dos títulos e números. */
+export const OG_FONTS = { body: "Barlow", display: "Barlow Condensed" } as const;
+
+type OgFont = { name: string; data: Buffer; weight: 500 | 600 | 800; style: "normal" | "italic" };
+
+const FONT_FILES = [
+  ["Barlow-Medium.ttf", OG_FONTS.body, 500, "normal"],
+  ["BarlowCondensed-SemiBold.ttf", OG_FONTS.display, 600, "normal"],
+  ["BarlowCondensed-ExtraBoldItalic.ttf", OG_FONTS.display, 800, "italic"],
+] as const;
 
 let fontsPromise: Promise<OgFont[]> | undefined;
 
-/** Geist regular + negrito (assets/fonts, licença SIL OFL), lidas uma vez. */
+/** Barlow e Barlow Condensed (assets/fonts, licença SIL OFL), lidas uma vez. */
 export function loadOgFonts(): Promise<OgFont[]> {
   fontsPromise ??= Promise.all(
-    (
-      [
-        ["Geist-Regular.ttf", 400],
-        ["Geist-Bold.ttf", 700],
-      ] as const
-    ).map(async ([file, weight]) => ({
-      name: "Geist",
+    FONT_FILES.map(async ([file, name, weight, style]) => ({
+      name,
       data: await readFile(join(process.cwd(), "assets/fonts", file)),
       weight,
-      style: "normal" as const,
+      style,
     })),
   );
   return fontsPromise;
 }
+
+/** Estilo dos números grandes: condensado, extra negrito, itálico. */
+export const OG_FIGURE = {
+  fontFamily: OG_FONTS.display,
+  fontWeight: 800,
+  fontStyle: "italic",
+  lineHeight: 0.9,
+} as const;
+
+/** Rótulo pequeno em caixa alta. */
+export const OG_KICKER = {
+  fontFamily: OG_FONTS.display,
+  fontWeight: 600,
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+} as const;
 
 /**
  * Baixa o escudo como data URL. Se a CDN da EA falhar, a prévia sai sem
@@ -80,7 +101,7 @@ export function OgFrame({ clubName, crest, children }: OgFrameProps) {
         padding: "56px 64px",
         background: OG_COLORS.background,
         color: OG_COLORS.foreground,
-        fontFamily: "Geist",
+        fontFamily: OG_FONTS.body,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
@@ -88,7 +109,9 @@ export function OgFrame({ clubName, crest, children }: OgFrameProps) {
           // eslint-disable-next-line @next/next/no-img-element -- Satori usa <img> puro
           <img src={crest} width={72} height={72} alt="" style={{ objectFit: "contain" }} />
         ) : null}
-        <div style={{ display: "flex", fontSize: 40, fontWeight: 700 }}>{clubName}</div>
+        <div style={{ display: "flex", ...OG_KICKER, fontSize: 40, letterSpacing: "0.06em", color: OG_COLORS.foreground }}>
+          {clubName}
+        </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center" }}>
@@ -96,8 +119,15 @@ export function OgFrame({ clubName, crest, children }: OgFrameProps) {
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 24, color: OG_COLORS.muted }}>
-        <div style={{ display: "flex" }}>EA SPORTS FC 27 · Pro Clubs</div>
-        <div style={{ display: "flex", color: OG_COLORS.primary, fontWeight: 700 }}>FC Clubs Stats</div>
+        <div style={{ display: "flex", ...OG_KICKER, fontSize: 22 }}>EA SPORTS FC 27 · Pro Clubs</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", padding: "2px 14px", background: OG_COLORS.primary, color: OG_COLORS.background, ...OG_FIGURE, fontSize: 24 }}>
+            FC
+          </div>
+          <div style={{ display: "flex", ...OG_KICKER, fontSize: 24, color: OG_COLORS.foreground, letterSpacing: "0.1em" }}>
+            CLUBS STATS
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -112,13 +142,12 @@ export function OgStat({ label, value, detail }: { label: string; value: string;
         flexDirection: "column",
         flex: 1,
         padding: "20px 24px",
-        borderRadius: 20,
         background: OG_COLORS.card,
         border: `2px solid ${OG_COLORS.border}`,
       }}
     >
-      <div style={{ display: "flex", fontSize: 22, color: OG_COLORS.muted }}>{label}</div>
-      <div style={{ display: "flex", fontSize: 36, fontWeight: 700, marginTop: 6 }}>{value}</div>
+      <div style={{ display: "flex", ...OG_KICKER, fontSize: 20, color: OG_COLORS.muted }}>{label}</div>
+      <div style={{ display: "flex", ...OG_FIGURE, fontSize: 44, marginTop: 6 }}>{value}</div>
       {detail ? (
         <div style={{ display: "flex", fontSize: 22, color: OG_COLORS.muted, marginTop: 4 }}>{detail}</div>
       ) : null}

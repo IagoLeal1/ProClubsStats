@@ -45,7 +45,10 @@ export function SyncClubButton({ eaClubId, platform, mode, label, className }: S
         type="submit"
         variant={mode === "open" ? "default" : "outline"}
         disabled={pending}
-        className="w-full sm:w-auto"
+        className={cn(
+          "h-11 w-full px-5 font-display text-base font-bold tracking-[0.08em] uppercase sm:w-auto",
+          mode === "open" ? "clip-slant rounded-none" : "rounded-sm",
+        )}
       >
         {mode === "refresh" && <Icon className={cn(pending && "animate-spin")} data-icon="inline-start" />}
         {pending ? labels.pending : (label ?? labels.idle)}

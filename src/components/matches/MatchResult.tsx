@@ -1,10 +1,11 @@
 import { cn } from "@/lib/utils";
 import type { MatchResult as MatchResultValue } from "@/types/match";
 
-const RESULT_STYLES: Record<MatchResultValue, { label: string; className: string }> = {
-  W: { label: "Vitória", className: "bg-win text-background" },
-  D: { label: "Empate", className: "bg-draw text-background" },
-  L: { label: "Derrota", className: "bg-loss text-background" },
+/** Letras em português: V (vitória), E (empate), D (derrota). */
+const RESULT_STYLES: Record<MatchResultValue, { letter: string; label: string; className: string }> = {
+  W: { letter: "V", label: "Vitória", className: "bg-win" },
+  D: { letter: "E", label: "Empate", className: "bg-draw" },
+  L: { letter: "D", label: "Derrota", className: "bg-loss" },
 };
 
 interface MatchResultProps {
@@ -13,7 +14,7 @@ interface MatchResultProps {
   className?: string;
 }
 
-/** Selo W / D / L com a cor do resultado. */
+/** Selo de resultado em paralelogramo, na cor do resultado. */
 export function MatchResult({ result, size = "md", className }: MatchResultProps) {
   const style = RESULT_STYLES[result];
   return (
@@ -21,13 +22,15 @@ export function MatchResult({ result, size = "md", className }: MatchResultProps
       title={style.label}
       aria-label={style.label}
       className={cn(
-        "inline-grid shrink-0 place-items-center rounded-md font-bold",
-        size === "sm" ? "size-6 text-xs" : "size-8 text-sm",
+        "inline-flex shrink-0 items-center justify-center font-display font-extrabold text-background",
+        size === "sm" ? "clip-slant-sm h-6 w-8 text-sm" : "clip-slant h-7 w-10 text-base",
         style.className,
         className,
       )}
     >
-      {result}
+      {style.letter}
     </span>
   );
 }
+
+export const RESULT_LETTERS: Record<MatchResultValue, string> = { W: "V", D: "E", L: "D" };

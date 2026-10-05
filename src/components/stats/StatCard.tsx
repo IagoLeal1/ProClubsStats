@@ -14,18 +14,31 @@ interface StatCardProps {
   label: string;
   value: string;
   hint?: string;
+  /** Selo no canto (ex.: "1º" no elenco). */
+  badge?: string;
   tone?: StatTone;
+  className?: string;
 }
 
-/** Bloco de número em destaque (rótulo, valor e uma linha de contexto). */
-export function StatCard({ label, value, hint, tone = "default" }: StatCardProps) {
+/** Número em destaque: rótulo em caixa alta + valor condensado itálico. */
+export function StatCard({ label, value, hint, badge, tone = "default", className }: StatCardProps) {
   return (
-    <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className={cn("mt-1 text-2xl font-semibold tracking-tight sm:text-3xl", TONE_CLASSES[tone])}>
-        {value}
-      </p>
-      {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+    <div className={cn("flex flex-col gap-1 border bg-card px-4 py-3.5", className)}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="kicker text-muted-foreground">{label}</p>
+        {badge && (
+          <span
+            className={cn(
+              "font-display text-sm font-bold",
+              badge.startsWith("1º") ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            {badge}
+          </span>
+        )}
+      </div>
+      <p className={cn("figure text-4xl sm:text-[2.75rem]", TONE_CLASSES[tone])}>{value}</p>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }

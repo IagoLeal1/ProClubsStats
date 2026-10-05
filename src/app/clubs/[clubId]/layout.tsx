@@ -31,10 +31,17 @@ export default async function ClubLayout({ children, params }: LayoutProps<"/clu
   if (autoSyncing) after(() => syncClubInBackground(club));
 
   return (
-    <Container className="space-y-6 pt-6 sm:pt-8">
-      <ClubHeader club={club} autoSyncing={autoSyncing} />
-      <ClubNav clubId={club.id} />
-      {children}
-    </Container>
+    <>
+      <section className="relative overflow-hidden border-b">
+        {/* Linhas do gramado ao fundo: círculo central e linha do meio */}
+        <div aria-hidden className="pointer-events-none absolute -top-48 -right-40 size-[560px] rounded-full border-2 border-[#191b20]" />
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-[120px] w-0.5 bg-[#191b20]" />
+        <Container className="relative flex flex-col gap-6 pt-8 sm:pt-10">
+          <ClubHeader club={club} autoSyncing={autoSyncing} />
+          <ClubNav clubId={club.id} />
+        </Container>
+      </section>
+      <Container className="pt-8">{children}</Container>
+    </>
   );
 }

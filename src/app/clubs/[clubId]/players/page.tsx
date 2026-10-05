@@ -68,10 +68,10 @@ export default async function ClubPlayersPage({
                   href={sortHref(basePath, column.key, sort, direction)}
                   scroll={false}
                   className={cn(
-                    "block rounded-full border px-3 py-1 text-xs",
+                    "flex h-9 items-center rounded-full border px-3.5 text-sm font-semibold",
                     sort === column.key
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "text-muted-foreground",
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-input text-muted-foreground",
                   )}
                 >
                   {column.label}
