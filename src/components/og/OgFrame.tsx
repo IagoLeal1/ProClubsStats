@@ -22,6 +22,9 @@ export const OG_COLORS = {
   win: "#22c55e",
   draw: "#8e949e",
   loss: "#ff5a4f",
+  pitch: "#0f1712",
+  pitchStripe: "#121c16",
+  pitchLine: "#26352c",
 } as const;
 
 /** Família do texto corrido e família condensada dos títulos e números. */

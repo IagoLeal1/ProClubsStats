@@ -7,14 +7,18 @@ import { ClubStats } from "@/components/clubs/ClubStats";
 import { LastSessionCard } from "@/components/clubs/LastSessionCard";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { PlayerRanking } from "@/components/players/PlayerRanking";
+import { SquadFormCard } from "@/components/players/SquadFormCard";
 import { AssistLinks } from "@/components/records/AssistLinks";
+import { TeamOfWeekCard } from "@/components/weeks/TeamOfWeekCard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { listClubProgress } from "@/lib/db/clubs.repository";
 import { listAllClubMatches, listClubPlayerMatchStats } from "@/lib/db/matches.repository";
 import { listPlayersByClub } from "@/lib/db/players.repository";
+import { computeSquadForm } from "@/lib/stats/form";
 import { computeAssistLinks } from "@/lib/stats/partnerships";
 import { buildPlayerRankings } from "@/lib/stats/player-stats";
 import { groupSessions, summarizeSession } from "@/lib/stats/sessions";
+import { groupWeeks, pickTeamOfTheWeek } from "@/lib/stats/weeks";
 
 import { loadClub } from "./load-club";
 
@@ -37,6 +41,7 @@ export default async function ClubDashboardPage({
   const rankings = buildPlayerRankings(players.filter((player) => player.isMember));
   const recentMatches = matches.slice(-RECENT_MATCHES).reverse();
   const lastSession = groupSessions(matches).at(-1);
+  const lastWeek = groupWeeks(matches).at(-1);
   const assistLinks = computeAssistLinks(matches, stats);
 
   return (
@@ -76,6 +81,10 @@ export default async function ClubDashboardPage({
         </div>
 
         <aside className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
+          {lastWeek && (
+            <TeamOfWeekCard clubId={club.id} week={lastWeek} team={pickTeamOfTheWeek(lastWeek, stats)} />
+          )}
+          <SquadFormCard clubId={club.id} players={players} forms={computeSquadForm(matches, stats, players)} />
           <section className="flex flex-col gap-4 border bg-card p-5 sm:p-6">
             <div className="space-y-1">
               <span className="kicker text-primary">Conexões de gol</span>

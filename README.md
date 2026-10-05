@@ -84,7 +84,7 @@ src/
 ├── app/                      # rotas (Server Components por padrão)
 │   ├── page.tsx              # /            busca + clubes recentes
 │   ├── search/               # /search      resultados da EA + clubes já salvos
-│   ├── clubs/[clubId]/       # dashboard, players, matches, matches/[matchId], formations
+│   ├── clubs/[clubId]/       # dashboard, players, matches, sessions, records, team-of-the-week, formations
 │   ├── actions/sync-club.ts  # Server Actions: abrir clube / atualizar
 ├── components/
 │   ├── clubs/ players/ matches/ formations/ layout/
@@ -171,17 +171,24 @@ região, semântica de `winnerByDnf`.
 
 ## Funcionalidades
 
-- **Dashboard**: campanha, aproveitamento, últimos jogos, atalho para a última noite,
-  evolução do skill rating e rankings do elenco (inclui MVPs).
+- **Dashboard**: campanha, aproveitamento, últimos jogos, atalho para a última noite, time da
+  semana, fase do elenco, evolução do skill rating e rankings do elenco (inclui MVPs).
 - **Jogadores** e **perfil de cada jogador**: temporada (EA) com posição no elenco, histórico
-  salvo, gráfico de notas, melhor partida e parcerias.
+  salvo, gráfico de notas, melhor partida, rendimento por posição (nota em cada setor) e
+  parcerias.
+- **Em alta / em baixa**: média dos últimos 5 jogos comparada com a média da temporada; ±0,3
+  ou mais marca a fase (precisa de 3+ partidas salvas).
+- **Time da semana** (segunda a domingo, horário de Brasília): titulares por setor num 4-3-3,
+  pela nota média de quem jogou ao menos um terço das partidas da semana; craque, banco e
+  card para o WhatsApp.
 - **Partidas** agrupadas por noite (partidas a menos de 3 h uma da outra) e **resumo da noite**
   com MVP, artilheiro, garçom e notas — com botão de compartilhar.
-- **Recordes**: goleadas, sequências, atuações individuais, hat-tricks, duplas e conexões de
-  assistência (somente as garantidas pelos números de cada partida — a EA não informa lance a
-  lance).
-- **Prévias para WhatsApp**: links do resumo da noite e do perfil geram imagem com os números
-  (`opengraph-image.tsx`, fonte Geist em `assets/fonts`, licença SIL OFL).
+- **Recordes**: goleadas, sequências, cansaço da noite (aproveitamento do 1º ao último jogo e
+  1ª × 2ª metade), atuações individuais, hat-tricks, duplas e conexões de assistência
+  (somente as garantidas pelos números de cada partida — a EA não informa lance a lance).
+- **Prévias para WhatsApp**: links do resumo da noite, do time da semana e do perfil geram
+  imagem com os números (`opengraph-image.tsx`, fontes Barlow em `assets/fonts`, licença SIL
+  OFL).
 - **Evolução do skill rating**: a EA só informa o valor atual; cada jogo de liga novo vira um
   ponto em `club_progress`.
 
@@ -189,7 +196,8 @@ região, semântica de `winnerByDnf`.
 
 `/clubs/[clubId]/formations` — escolha o esquema (4-3-3, 4-2-3-1, 4-4-2, 4-1-2-1-2,
 4-3-2-1, 3-5-2, 3-4-3, 5-3-2), clique em cada posição e defina jogador (ou IA), arquétipo
-do FC 27, até 6 pontos fortes (atributos como Curva e Passe curto) e uma observação.
+do FC 27, até 6 pontos fortes (atributos como Curva e Passe curto) e uma observação. Ao
+escolher o jogador, o montador mostra a nota de cada um naquele setor e sugere quem rende mais.
 
 - Arquétipos, atributos e esquemas são dados em [`src/lib/formations/`](src/lib/formations/) —
   se a EA mudar algo num patch, só esses arquivos mudam.

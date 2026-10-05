@@ -99,6 +99,30 @@ export function formatPositionGroupShort(group: PositionGroup | null): string {
   return group ? POSITION_GROUP_SHORT[group] : EMPTY;
 }
 
+const POSITION_GROUP_NAMES: Record<PositionGroup, string> = {
+  goalkeeper: "Gol",
+  defender: "Defesa",
+  midfielder: "Meio-campo",
+  forward: "Ataque",
+};
+
+/** Ex.: "Meio-campo". */
+export function formatPositionGroup(group: PositionGroup | null): string {
+  return group ? POSITION_GROUP_NAMES[group] : EMPTY;
+}
+
+const POSITION_GROUP_PLACES: Record<PositionGroup, string> = {
+  goalkeeper: "no gol",
+  defender: "na defesa",
+  midfielder: "no meio-campo",
+  forward: "no ataque",
+};
+
+/** Ex.: "no meio-campo", para frases como "rende mais no meio-campo". */
+export function formatPositionGroupPlace(group: PositionGroup): string {
+  return POSITION_GROUP_PLACES[group];
+}
+
 export function formatSecondsAsMinutes(seconds: number | null): string {
   return seconds === null ? EMPTY : `${Math.round(seconds / 60)}'`;
 }

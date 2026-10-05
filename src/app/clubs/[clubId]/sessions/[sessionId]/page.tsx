@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { StarIcon } from "lucide-react";
+import { ShirtIcon, StarIcon } from "lucide-react";
 
 import { BackLink } from "@/components/layout/BackLink";
 import { ShareButton } from "@/components/layout/ShareButton";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { formatPercent, formatRating, formatSigned, formatTime, formatWeekdayDate } from "@/lib/format";
 import type { GameSession, SessionPlayerLine, SessionSummary } from "@/lib/stats/sessions";
+import { weekIdOf } from "@/lib/stats/weeks";
 import { cn } from "@/lib/utils";
 
 import { loadSession } from "./load-session";
@@ -230,12 +231,20 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
         </MatchList>
       </section>
 
-      <ShareButton
-        text={shareText(club.name, session, summary)}
-        title={`${club.name} · resumo da noite`}
-        label="Mandar no grupo"
-        className="w-full sm:w-auto"
-      />
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <ShareButton
+          text={shareText(club.name, session, summary)}
+          title={`${club.name} · resumo da noite`}
+          label="Mandar no grupo"
+          className="w-full sm:w-auto"
+        />
+        <Link
+          href={`/clubs/${club.id}/team-of-the-week/${weekIdOf(session.startedAt)}`}
+          className="flex h-12 items-center justify-center gap-2.5 border border-input px-6 font-display text-lg font-bold tracking-[0.08em] uppercase transition-colors hover:bg-surface"
+        >
+          <ShirtIcon className="size-5" aria-hidden /> Time da semana
+        </Link>
+      </div>
     </div>
   );
 }

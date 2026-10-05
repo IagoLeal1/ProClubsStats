@@ -2,8 +2,10 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { formatInteger } from "@/lib/format";
+import type { PlayerForm } from "@/lib/stats/form";
 import type { Player } from "@/types/player";
 
+import { FormBadge } from "./FormBadge";
 import { PLAYER_STAT_COLUMNS } from "./player-columns";
 
 const CARD_COLUMNS = PLAYER_STAT_COLUMNS.filter(
@@ -11,7 +13,7 @@ const CARD_COLUMNS = PLAYER_STAT_COLUMNS.filter(
 );
 
 /** Versão em card da linha da tabela, usada no mobile. */
-export function PlayerStatsCard({ player }: { player: Player }) {
+export function PlayerStatsCard({ player, form }: { player: Player; form?: PlayerForm }) {
   return (
     <Link
       href={`/clubs/${player.clubId}/players/${player.id}`}
@@ -19,7 +21,10 @@ export function PlayerStatsCard({ player }: { player: Player }) {
     >
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-display text-xl font-bold">{player.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="truncate font-display text-xl font-bold">{player.name}</p>
+            {form && form.trend !== "steady" && <FormBadge form={form} compact />}
+          </div>
           <p className="truncate text-xs text-muted-foreground">
             {[player.position, player.proName].filter(Boolean).join(" · ") || "—"}
           </p>

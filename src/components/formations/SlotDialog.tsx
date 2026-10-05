@@ -12,7 +12,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ARCHETYPES, findArchetype } from "@/lib/formations/archetypes";
 import { ATTRIBUTE_GROUPS, MAX_STRENGTHS } from "@/lib/formations/attributes";
+import { formatPositionGroupPlace, formatPositionGroupShort, formatRating } from "@/lib/format";
 import type { SlotTemplate } from "@/lib/formations/templates";
+import { MIN_POSITION_GAMES, type PositionRatings } from "@/lib/stats/positions";
 import { cn } from "@/lib/utils";
 import type { PositionGroup } from "@/types/player";
 
@@ -20,6 +22,8 @@ export interface EditorMember {
   id: string;
   name: string;
   proName: string | null;
+  /** Nota média por setor nas partidas salvas. */
+  ratings: PositionRatings;
 }
 
 export interface DraftSlot {
@@ -71,6 +75,14 @@ export function SlotDialog({
         )
       : ATTRIBUTE_GROUPS;
   const atLimit = slot.strengths.length >= MAX_STRENGTHS;
+  // Sugestões: quem tem as melhores notas neste setor.
+  const bestHere = members
+    .flatMap((member) => {
+      const rating = member.ratings[template.group];
+      return rating && rating.games >= MIN_POSITION_GAMES ? [{ member, rating }] : [];
+    })
+    .sort((a, b) => b.rating.averageRating - a.rating.averageRating)
+    .slice(0, 3);
 
   function toggleStrength(id: string) {
     onChange({
@@ -94,27 +106,58 @@ export function SlotDialog({
         </DialogHeader>
 
         <div className="space-y-5">
-          <label className="block space-y-1.5">
-            <span className="kicker text-muted-foreground">Jogador</span>
-            <select
-              className={fieldClass}
-              value={slot.playerId ?? ""}
-              onChange={(event) => onChange({ playerId: event.target.value || null })}
-            >
-              <option value="">IA (vaga sem jogador)</option>
-              {members.map((member) => {
-                const elsewhere =
-                  member.id !== slot.playerId ? assignedPositions.get(member.id) : undefined;
-                return (
-                  <option key={member.id} value={member.id}>
-                    {member.name}
-                    {member.proName ? ` (${member.proName})` : ""}
-                    {elsewhere ? ` — sai de ${elsewhere}` : ""}
-                  </option>
-                );
-              })}
-            </select>
-          </label>
+          <div className="space-y-2">
+            <label className="block space-y-1.5">
+              <span className="kicker text-muted-foreground">Jogador</span>
+              <select
+                className={fieldClass}
+                value={slot.playerId ?? ""}
+                onChange={(event) => onChange({ playerId: event.target.value || null })}
+              >
+                <option value="">IA (vaga sem jogador)</option>
+                {members.map((member) => {
+                  const elsewhere =
+                    member.id !== slot.playerId ? assignedPositions.get(member.id) : undefined;
+                  const rating = member.ratings[template.group];
+                  return (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                      {member.proName ? ` (${member.proName})` : ""}
+                      {rating
+                        ? ` · ${formatRating(rating.averageRating)} de ${formatPositionGroupShort(template.group)}`
+                        : ""}
+                      {elsewhere ? ` — sai de ${elsewhere}` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+            {bestHere.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 text-sm">
+                <span className="text-muted-foreground">Rendem mais {formatPositionGroupPlace(template.group)}:</span>
+                {bestHere.map(({ member, rating }) => {
+                  const chosen = slot.playerId === member.id;
+                  return (
+                    <button
+                      key={member.id}
+                      type="button"
+                      aria-pressed={chosen}
+                      onClick={() => onChange({ playerId: member.id })}
+                      className={cn(
+                        "inline-flex h-8 items-center gap-1.5 rounded-sm border px-2.5 font-semibold transition-colors hover:border-primary",
+                        chosen && "border-primary bg-primary/10",
+                      )}
+                    >
+                      {member.name}{" "}
+                      <span className="font-display font-bold text-primary tabular">
+                        {formatRating(rating.averageRating)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           <div className="space-y-1.5">
             <label className="block space-y-1.5">

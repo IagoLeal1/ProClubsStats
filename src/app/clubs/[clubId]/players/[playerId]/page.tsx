@@ -10,7 +10,10 @@ import { BackLink } from "@/components/layout/BackLink";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { RESULT_LETTERS } from "@/components/matches/MatchResult";
+import { FormBadge } from "@/components/players/FormBadge";
 import { PlayerMatchLog } from "@/components/players/PlayerMatchLog";
+import { PositionSplits } from "@/components/players/PositionSplits";
+import { RatingBadge } from "@/components/players/RatingBadge";
 import { AssistLinks } from "@/components/records/AssistLinks";
 import { StatCard } from "@/components/stats/StatCard";
 import {
@@ -27,6 +30,7 @@ import {
   formatRating,
 } from "@/lib/format";
 import { ratingScale } from "@/lib/stats/chart-scale";
+import { computeForm, type PlayerForm } from "@/lib/stats/form";
 import {
   computeAssistLinks,
   computePairs,
@@ -40,6 +44,7 @@ import {
   type SquadRank,
 } from "@/lib/stats/player-history";
 import { goalsAndAssists } from "@/lib/stats/player-stats";
+import { splitByPosition } from "@/lib/stats/positions";
 import { cn } from "@/lib/utils";
 import type { Club } from "@/types/club";
 import type { PlayerMatchEntry } from "@/types/match";
@@ -129,7 +134,17 @@ interface Accolades {
   topMvp: boolean;
 }
 
-function PlayerHero({ club, player, accolades }: { club: Club; player: Player; accolades: Accolades }) {
+function PlayerHero({
+  club,
+  player,
+  accolades,
+  form,
+}: {
+  club: Club;
+  player: Player;
+  accolades: Accolades;
+  form: PlayerForm | null;
+}) {
   const position = player.position ?? formatPositionGroupShort(player.favoritePosition);
   const badges = [
     accolades.topScorer && "Artilheiro do elenco",
@@ -170,6 +185,16 @@ function PlayerHero({ club, player, accolades }: { club: Club; player: Player; a
               {badge}
             </span>
           ))}
+          {form && form.trend !== "steady" && (
+            <span
+              className={cn(
+                "flex h-8 items-center border px-3",
+                form.trend === "up" ? "border-win/60" : "border-loss/60",
+              )}
+            >
+              <FormBadge form={form} className="text-base" />
+            </span>
+          )}
         </div>
       </div>
     </section>
@@ -197,6 +222,28 @@ function HistoryHighlights({ summary }: { summary: PlayerHistorySummary }) {
           passes certos · {summary.manOfTheMatch} MVP · nota {formatRating(summary.averageRating)}
         </span>
       </div>
+    </div>
+  );
+}
+
+function FormCard({ form }: { form: PlayerForm }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 border bg-card p-4 sm:px-5">
+      <div className="flex flex-col gap-1">
+        <span className="kicker text-muted-foreground">Fase · últimos {form.ratings.length} jogos</span>
+        <div className="flex items-baseline gap-3">
+          <span className="figure text-4xl">{formatRating(form.recentAverage)}</span>
+          <FormBadge form={form} />
+        </div>
+        <span className="text-xs text-muted-foreground">média da temporada: {formatRating(form.baseline)}</span>
+      </div>
+      <ol className="flex gap-1.5" aria-label="Notas dos últimos jogos, do mais antigo ao mais recente">
+        {form.ratings.map((rating, index) => (
+          <li key={index}>
+            <RatingBadge rating={rating} />
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
@@ -304,6 +351,11 @@ export default async function PlayerProfilePage({
     listClubPlayerMatchStats(club.id),
   ]);
   const summary = summarizePlayerHistory(history);
+  const form = computeForm(
+    history.flatMap((entry) => (entry.stats.rating === null ? [] : [entry.stats.rating])),
+    player.stats.averageRating,
+  );
+  const splits = splitByPosition(history);
   const rank = (value: (candidate: Player) => number | null) => rankInSquad(squad, player, value);
   const { links } = computeAssistLinks(clubMatches, clubStats);
   const partners = computePairs(clubMatches, clubStats)
@@ -337,6 +389,7 @@ export default async function PlayerProfilePage({
             topAssister: isFirst(ranks.assists) && stats.assists > 0,
             topMvp: isFirst(ranks.mvps) && stats.manOfTheMatch > 0,
           }}
+          form={form}
         />
       </div>
 
@@ -380,6 +433,7 @@ export default async function PlayerProfilePage({
         ) : (
           <>
             <HistoryHighlights summary={summary} />
+            {form && <FormCard form={form} />}
 
             <div className="border bg-card p-4 sm:p-5">
               <div className="mb-3 flex items-baseline justify-between gap-3">
@@ -395,6 +449,16 @@ export default async function PlayerProfilePage({
           </>
         )}
       </section>
+
+      {splits.length > 0 && (
+        <section>
+          <SectionHeading
+            title="Por posição"
+            description="Nas partidas salvas. A EA informa só o setor: gol, defesa, meio-campo ou ataque."
+          />
+          <PositionSplits splits={splits} />
+        </section>
+      )}
 
       {history.length > 0 && (
         <Partnerships

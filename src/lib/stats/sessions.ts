@@ -24,7 +24,7 @@ export interface GameSession {
   record: SessionRecord;
 }
 
-function sessionRecord(matches: Match[]): SessionRecord {
+export function sessionRecord(matches: Match[]): SessionRecord {
   return {
     wins: matches.filter((match) => match.result === "W").length,
     draws: matches.filter((match) => match.result === "D").length,

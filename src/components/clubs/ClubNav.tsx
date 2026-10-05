@@ -21,8 +21,8 @@ const ITEMS: { segment: string; label: string; short: string; icon: LucideIcon }
   { segment: "/formations", label: "Formações", short: "Formações", icon: ClipboardListIcon },
 ];
 
-/** O resumo da noite fica sob "Partidas". */
-const ALIASES: Record<string, string> = { "/sessions": "/matches" };
+/** O resumo da noite fica sob "Partidas"; o time da semana, sob "Visão geral". */
+const ALIASES: Record<string, string> = { "/sessions": "/matches", "/team-of-the-week": "" };
 
 function useActiveSegment(base: string): string {
   const pathname = usePathname();

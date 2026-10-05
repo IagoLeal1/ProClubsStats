@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { cn } from "@/lib/utils";
 
 interface FormationPlayerProps {
@@ -13,23 +15,37 @@ interface FormationPlayerProps {
   /** Torna o marcador clicável (montador de formação). */
   onSelect?: () => void;
   selected?: boolean;
+  /** Destaque em verde sem ser clicável (ex.: craque da semana). */
+  highlighted?: boolean;
+  /** Torna o marcador um link (ex.: perfil do jogador). */
+  href?: string;
 }
 
 const clamp = (value: number) => Math.min(100, Math.max(0, value));
 
 /** Marcador de jogador posicionado no FootballPitch. */
-export function FormationPlayer({ position, name, detail, x, y, onSelect, selected }: FormationPlayerProps) {
+export function FormationPlayer({
+  position,
+  name,
+  detail,
+  x,
+  y,
+  onSelect,
+  selected,
+  highlighted,
+  href,
+}: FormationPlayerProps) {
   const content = (
     <>
       <span
         className={cn(
           "grid size-[38px] place-items-center rounded-full border-2 font-display text-[13px] font-extrabold transition-transform",
-          selected
+          selected || highlighted
             ? "border-primary bg-primary text-primary-foreground shadow-[0_0_0_4px_rgb(34_197_94/0.3)]"
             : name
               ? "border-foreground bg-background text-foreground"
               : "border-input bg-background/60 text-muted-foreground",
-          onSelect && !selected && "group-hover:scale-110 group-hover:border-primary",
+          (onSelect || href) && !selected && "group-hover:scale-110 group-hover:border-primary",
         )}
       >
         {position}
@@ -53,6 +69,14 @@ export function FormationPlayer({ position, name, detail, x, y, onSelect, select
   const className =
     "absolute flex w-[4.75rem] -translate-x-1/2 translate-y-1/2 flex-col items-center gap-0.5 sm:w-20";
   const style = { left: `${clamp(x)}%`, bottom: `${clamp(y)}%` };
+
+  if (href) {
+    return (
+      <Link href={href} className={cn(className, "group rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring")} style={style}>
+        {content}
+      </Link>
+    );
+  }
 
   if (!onSelect) {
     return (

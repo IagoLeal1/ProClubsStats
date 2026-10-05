@@ -8,7 +8,9 @@ import { SectionHeading } from "@/components/layout/SectionHeading";
 import { PLAYER_STAT_COLUMNS } from "@/components/players/player-columns";
 import { PlayerStatsCard } from "@/components/players/PlayerStatsCard";
 import { defaultDirection, PlayerTable, sortHref } from "@/components/players/PlayerTable";
+import { listAllClubMatches, listClubPlayerMatchStats } from "@/lib/db/matches.repository";
 import { listPlayersByClub } from "@/lib/db/players.repository";
+import { computeSquadForm } from "@/lib/stats/form";
 import { PLAYER_SORT_KEYS, sortPlayers } from "@/lib/stats/player-stats";
 import { cn } from "@/lib/utils";
 
@@ -32,14 +34,18 @@ export default async function ClubPlayersPage({
   const direction = dir ?? defaultDirection(sort);
   const basePath = `/clubs/${club.id}/players`;
 
+  const [squad, matches, stats] = await Promise.all([
+    listPlayersByClub(club.id),
+    listAllClubMatches(club.id),
+    listClubPlayerMatchStats(club.id),
+  ]);
   // Ex-membros sem nenhum jogo (criados só para vincular partidas) poluiriam a lista.
   const players = sortPlayers(
-    (await listPlayersByClub(club.id)).filter(
-      (player) => player.isMember || player.stats.gamesPlayed > 0,
-    ),
+    squad.filter((player) => player.isMember || player.stats.gamesPlayed > 0),
     sort,
     direction,
   );
+  const forms = computeSquadForm(matches, stats, players);
 
   if (players.length === 0) {
     return (
@@ -55,7 +61,7 @@ export default async function ClubPlayersPage({
     <section>
       <SectionHeading
         title="Jogadores"
-        description={`${players.length} jogadores · estatísticas da temporada no clube (EA)`}
+        description={`${players.length} jogadores · estatísticas da temporada no clube (EA) · seta = fase nos últimos jogos`}
       />
 
       {/* Mobile: cards + atalhos de ordenação */}
@@ -82,12 +88,12 @@ export default async function ClubPlayersPage({
           </ul>
         </nav>
         {players.map((player) => (
-          <PlayerStatsCard key={player.id} player={player} />
+          <PlayerStatsCard key={player.id} player={player} form={forms.get(player.id)} />
         ))}
       </div>
 
       <div className="hidden md:block">
-        <PlayerTable players={players} basePath={basePath} sort={sort} direction={direction} />
+        <PlayerTable players={players} basePath={basePath} sort={sort} direction={direction} forms={forms} />
       </div>
     </section>
   );

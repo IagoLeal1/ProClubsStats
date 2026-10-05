@@ -10,10 +10,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { PlayerForm } from "@/lib/stats/form";
 import type { PlayerSortKey, SortDirection } from "@/lib/stats/player-stats";
 import { cn } from "@/lib/utils";
 import type { Player } from "@/types/player";
 
+import { FormBadge } from "./FormBadge";
 import { PLAYER_STAT_COLUMNS } from "./player-columns";
 
 /** Texto ordena crescente por padrão; números, decrescente. */
@@ -67,14 +69,20 @@ function SortableHead({ label, title, columnKey, basePath, sort, direction, clas
   );
 }
 
+function TrendBadge({ form }: { form: PlayerForm | undefined }) {
+  return form && form.trend !== "steady" ? <FormBadge form={form} compact /> : null;
+}
+
 interface PlayerTableProps {
   players: Player[];
   basePath: string;
   sort: PlayerSortKey;
   direction: SortDirection;
+  /** Fase de cada jogador; só em alta / em baixa aparecem. */
+  forms?: Map<string, PlayerForm>;
 }
 
-export function PlayerTable({ players, basePath, sort, direction }: PlayerTableProps) {
+export function PlayerTable({ players, basePath, sort, direction, forms }: PlayerTableProps) {
   const headProps = { basePath, sort, direction };
 
   return (
@@ -121,6 +129,7 @@ export function PlayerTable({ players, basePath, sort, direction }: PlayerTableP
                       ex-membro
                     </Badge>
                   )}
+                  <TrendBadge form={forms?.get(player.id)} />
                 </div>
               </TableCell>
               {PLAYER_STAT_COLUMNS.map((column) => (

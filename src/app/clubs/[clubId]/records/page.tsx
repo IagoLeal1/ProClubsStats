@@ -5,11 +5,13 @@ import { TrophyIcon } from "lucide-react";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { AssistLinks } from "@/components/records/AssistLinks";
+import { NightCurve } from "@/components/records/NightCurve";
 import { PairsTable } from "@/components/records/PairsTable";
 import { PerformanceList } from "@/components/records/PerformanceList";
 import { RecordCard } from "@/components/records/RecordCard";
 import { listAllClubMatches, listClubPlayerMatchStats } from "@/lib/db/matches.repository";
 import { formatDateTime, formatInteger, formatRating } from "@/lib/format";
+import { computeNightCurve } from "@/lib/stats/night-curve";
 import { computeAssistLinks, computePairs } from "@/lib/stats/partnerships";
 import {
   computeClubRecords,
@@ -17,6 +19,7 @@ import {
   topPerformances,
   type StreakRecord,
 } from "@/lib/stats/records";
+import { groupSessions } from "@/lib/stats/sessions";
 import type { Match, MatchResult } from "@/types/match";
 
 import { loadClub } from "../load-club";
@@ -142,6 +145,14 @@ export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clu
             />
           )}
         </div>
+      </section>
+
+      <section>
+        <SectionHeading
+          title="Cansaço da noite"
+          description="Aproveitamento do 1º ao último jogo de cada noite (3 pontos por vitória, 1 por empate)."
+        />
+        <NightCurve curve={computeNightCurve(groupSessions(matches))} />
       </section>
 
       <section>

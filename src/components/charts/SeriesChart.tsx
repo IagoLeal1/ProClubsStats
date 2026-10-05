@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { MatchResult } from "@/components/matches/MatchResult";
-import { formatInteger, formatRating } from "@/lib/format";
+import { formatInteger, formatPercent, formatRating } from "@/lib/format";
 import type { MatchResult as MatchResultValue } from "@/types/match";
 
-export type ChartValueFormat = "rating" | "integer";
+export type ChartValueFormat = "rating" | "integer" | "percent";
 
 export interface SeriesChartPoint {
   key: string;
@@ -43,12 +43,14 @@ const DOT_RADIUS = 4;
 const FORMATTERS: Record<ChartValueFormat, (value: number) => string> = {
   rating: formatRating,
   integer: formatInteger,
+  percent: (value) => formatPercent(value),
 };
 
 /** Ticks de nota são inteiros: "7" em vez de "7,0". */
 const TICK_FORMATTERS: Record<ChartValueFormat, (value: number) => string> = {
   rating: (value) => String(value),
   integer: formatInteger,
+  percent: (value) => `${value}%`,
 };
 
 function ticks([min, max]: [number, number], step: number): number[] {
