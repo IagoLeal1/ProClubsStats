@@ -4,96 +4,112 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { MatchResult } from "@/components/matches/MatchResult";
-import { formatRating } from "@/lib/format";
+import { formatInteger, formatRating } from "@/lib/format";
 import type { MatchResult as MatchResultValue } from "@/types/match";
 
-export interface RatingPoint {
-  href: string;
-  rating: number;
-  opponent: string;
-  /** Data e hora para o tooltip. */
-  dateLabel: string;
-  /** Data curta para o eixo X. */
+export type ChartValueFormat = "rating" | "integer";
+
+export interface LineChartPoint {
+  key: string;
+  value: number;
+  /** Rótulo curto para o eixo X (só primeiro e último aparecem). */
   axisLabel: string;
-  score: string;
-  result: MatchResultValue;
-  goals: number;
-  assists: number;
+  /** Linha logo abaixo do valor no tooltip. */
+  title: string;
+  /** Linhas extras do tooltip. */
+  details?: string[];
+  result?: { value: MatchResultValue; label: string };
+  /** Clique/Enter abre este link. */
+  href?: string;
 }
 
-interface PlayerRatingChartProps {
-  /** Ordem cronológica: mais antiga → mais recente. */
-  points: RatingPoint[];
-  average: number | null;
+interface LineChartProps {
+  /** Ordem cronológica: mais antigo → mais recente. */
+  points: LineChartPoint[];
+  domain: [number, number];
+  tickStep: number;
+  valueFormat: ChartValueFormat;
+  /** Linha de referência (ex.: média). */
+  reference?: { value: number; label: string } | null;
+  ariaLabel: string;
 }
 
 const HEIGHT = 208;
-const MARGIN = { top: 20, right: 56, bottom: 28, left: 28 };
+const MARGIN = { top: 20, right: 64, bottom: 28, left: 40 };
 const DOT_RADIUS = 4;
 
-function yTicks(min: number, max: number): number[] {
-  const step = max - min > 6 ? 2 : 1;
-  const ticks: number[] = [];
-  for (let value = max; value >= min; value -= step) ticks.push(value);
-  return ticks;
-}
+const FORMATTERS: Record<ChartValueFormat, (value: number) => string> = {
+  rating: formatRating,
+  integer: formatInteger,
+};
 
-function contributionLabel(goals: number, assists: number): string | null {
-  const parts = [
-    goals > 0 && `${goals} ${goals === 1 ? "gol" : "gols"}`,
-    assists > 0 && `${assists} ${assists === 1 ? "assistência" : "assistências"}`,
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join(" · ") : null;
+/** Ticks de nota são inteiros: "7" em vez de "7,0". */
+const TICK_FORMATTERS: Record<ChartValueFormat, (value: number) => string> = {
+  rating: (value) => String(value),
+  integer: formatInteger,
+};
+
+function ticks([min, max]: [number, number], step: number): number[] {
+  const values: number[] = [];
+  for (let value = max; value >= min; value -= step) values.push(value);
+  return values;
 }
 
 /**
- * Nota do jogador em cada partida salva (linha + pontos), com a média como
- * referência. Hover/teclado mostram os detalhes; clique abre a partida.
- * Os mesmos valores estão na tabela de partidas logo abaixo (versão em tabela).
+ * Gráfico de linha com pontos (uma série), seguindo o padrão de dataviz do
+ * projeto: linha de 2px, pontos com anel na cor do fundo, grade discreta,
+ * rótulo só no último ponto e tooltip por hover, toque ou teclado.
+ * A página sempre oferece os mesmos valores em tabela/texto.
  */
-export function PlayerRatingChart({ points, average }: PlayerRatingChartProps) {
+export function LineChart({ points, domain, tickStep, valueFormat, reference, ariaLabel }: LineChartProps) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [active, setActive] = useState<number | null>(null);
+  const format = FORMATTERS[valueFormat];
 
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return;
-    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    const measure = () => setWidth(element.getBoundingClientRect().width);
+    // Mede já na montagem; o observer cuida das mudanças de tamanho depois.
+    const frame = requestAnimationFrame(measure);
+    const observer = new ResizeObserver(measure);
     observer.observe(element);
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, []);
 
-  const ratings = points.map((point) => point.rating);
-  const yMin = Math.max(0, Math.min(5, Math.floor(Math.min(...ratings)) - 1));
-  const yMax = 10;
+  const [yMin, yMax] = domain;
   const innerWidth = Math.max(0, width - MARGIN.left - MARGIN.right);
   const innerHeight = HEIGHT - MARGIN.top - MARGIN.bottom;
   const band = points.length > 0 ? innerWidth / points.length : 0;
 
   const x = (index: number) => MARGIN.left + band * (index + 0.5);
-  const y = (rating: number) => MARGIN.top + ((yMax - rating) / (yMax - yMin)) * innerHeight;
+  const y = (value: number) => MARGIN.top + ((yMax - value) / (yMax - yMin)) * innerHeight;
 
   const linePath = points
-    .map((point, index) => `${index === 0 ? "M" : "L"}${x(index)},${y(point.rating)}`)
+    .map((point, index) => `${index === 0 ? "M" : "L"}${x(index)},${y(point.value)}`)
     .join(" ");
 
   const lastIndex = points.length - 1;
   const activePoint = active === null ? null : points[active];
 
-  function moveActive(delta: number) {
-    setActive((current) => {
-      const base = current ?? lastIndex;
-      return Math.min(lastIndex, Math.max(0, base + delta));
-    });
+  function open(point: LineChartPoint) {
+    if (point.href) router.push(point.href);
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "ArrowLeft") moveActive(-1);
-    else if (event.key === "ArrowRight") moveActive(1);
-    else if (event.key === "Enter" && activePoint) router.push(activePoint.href);
-    else return;
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      const delta = event.key === "ArrowLeft" ? -1 : 1;
+      setActive((current) => Math.min(lastIndex, Math.max(0, (current ?? lastIndex) + delta)));
+    } else if (event.key === "Enter" && activePoint) {
+      open(activePoint);
+    } else {
+      return;
+    }
     event.preventDefault();
   }
 
@@ -105,7 +121,7 @@ export function PlayerRatingChart({ points, average }: PlayerRatingChartProps) {
       ref={containerRef}
       tabIndex={0}
       role="group"
-      aria-label="Nota por partida. Use as setas para navegar e Enter para abrir a partida."
+      aria-label={`${ariaLabel}. Use as setas para navegar pelos pontos.`}
       onKeyDown={handleKeyDown}
       onFocus={() => setActive((current) => current ?? lastIndex)}
       onBlur={() => setActive(null)}
@@ -117,14 +133,11 @@ export function PlayerRatingChart({ points, average }: PlayerRatingChartProps) {
           width={width}
           height={HEIGHT}
           role="img"
-          aria-label={`Notas das últimas ${points.length} partidas${
-            average !== null ? `, média ${formatRating(average)}` : ""
-          }`}
+          aria-label={ariaLabel}
           onPointerLeave={() => setActive(null)}
           className="block select-none"
         >
-          {/* Grade e eixo Y */}
-          {yTicks(yMin, yMax).map((tick) => (
+          {ticks(domain, tickStep).map((tick) => (
             <g key={tick}>
               <line
                 x1={MARGIN.left}
@@ -141,34 +154,32 @@ export function PlayerRatingChart({ points, average }: PlayerRatingChartProps) {
                 textAnchor="end"
                 className="fill-muted-foreground text-[11px] tabular"
               >
-                {tick}
+                {TICK_FORMATTERS[valueFormat](tick)}
               </text>
             </g>
           ))}
 
-          {/* Média como referência */}
-          {average !== null && (
+          {reference && (
             <g>
               <line
                 x1={MARGIN.left}
                 x2={width - MARGIN.right}
-                y1={y(average)}
-                y2={y(average)}
+                y1={y(reference.value)}
+                y2={y(reference.value)}
                 className="stroke-muted-foreground/60"
                 strokeWidth={1}
               />
               <text
                 x={width - MARGIN.right + 6}
-                y={y(average)}
+                y={y(reference.value)}
                 dy="0.32em"
                 className="fill-muted-foreground text-[11px]"
               >
-                média {formatRating(average)}
+                {reference.label}
               </text>
             </g>
           )}
 
-          {/* Crosshair */}
           {active !== null && (
             <line
               x1={x(active)}
@@ -191,28 +202,26 @@ export function PlayerRatingChart({ points, average }: PlayerRatingChartProps) {
 
           {points.map((point, index) => (
             <circle
-              key={point.href}
+              key={point.key}
               cx={x(index)}
-              cy={y(point.rating)}
+              cy={y(point.value)}
               r={index === active ? DOT_RADIUS + 1.5 : DOT_RADIUS}
               className="fill-chart-1 stroke-card"
               strokeWidth={2}
             />
           ))}
 
-          {/* Rótulo só no último ponto */}
           {lastIndex >= 0 && active === null && (
             <text
               x={x(lastIndex)}
-              y={y(points[lastIndex].rating) - 10}
+              y={y(points[lastIndex].value) - 10}
               textAnchor="middle"
               className="fill-foreground text-[11px] font-semibold tabular"
             >
-              {formatRating(points[lastIndex].rating)}
+              {format(points[lastIndex].value)}
             </text>
           )}
 
-          {/* Eixo X: primeira e última data */}
           {points.length > 1 && (
             <>
               <text
@@ -234,19 +243,19 @@ export function PlayerRatingChart({ points, average }: PlayerRatingChartProps) {
             </>
           )}
 
-          {/* Áreas de hover: uma faixa inteira por partida, maior que o ponto */}
+          {/* Áreas de hover: uma faixa inteira por ponto, maior que o próprio ponto */}
           {points.map((point, index) => (
             <rect
-              key={`hit-${point.href}`}
+              key={`hit-${point.key}`}
               x={x(index) - band / 2}
               y={MARGIN.top}
               width={band}
               height={innerHeight}
               fill="transparent"
-              className="cursor-pointer"
+              className={point.href ? "cursor-pointer" : undefined}
               onPointerEnter={() => setActive(index)}
-              // No toque não há hover: o 1º toque mostra o detalhe, o 2º abre a partida.
-              onClick={() => (active === index ? router.push(point.href) : setActive(index))}
+              // No toque não há hover: o 1º toque mostra o detalhe, o 2º abre o link.
+              onClick={() => (active === index ? open(point) : setActive(index))}
             />
           ))}
         </svg>
@@ -258,18 +267,19 @@ export function PlayerRatingChart({ points, average }: PlayerRatingChartProps) {
           className="pointer-events-none absolute top-0 z-10 w-44 -translate-x-1/2 rounded-lg bg-popover px-3 py-2 text-xs shadow-lg ring-1 ring-foreground/10"
           style={{ left: tooltipLeft }}
         >
-          <p className="text-lg leading-tight font-semibold">{formatRating(activePoint.rating)}</p>
-          <p className="truncate text-muted-foreground">vs {activePoint.opponent}</p>
-          <p className="mt-1 flex items-center gap-1.5 whitespace-nowrap">
-            <MatchResult result={activePoint.result} size="sm" className="size-4 text-[10px]" />
-            <span className="font-medium">{activePoint.score}</span>
-          </p>
-          <p className="text-muted-foreground">{activePoint.dateLabel}</p>
-          {contributionLabel(activePoint.goals, activePoint.assists) && (
-            <p className="mt-1 text-muted-foreground">
-              {contributionLabel(activePoint.goals, activePoint.assists)}
+          <p className="text-lg leading-tight font-semibold">{format(activePoint.value)}</p>
+          <p className="truncate text-muted-foreground">{activePoint.title}</p>
+          {activePoint.result && (
+            <p className="mt-1 flex items-center gap-1.5 whitespace-nowrap">
+              <MatchResult result={activePoint.result.value} size="sm" className="size-4 text-[10px]" />
+              <span className="font-medium">{activePoint.result.label}</span>
             </p>
           )}
+          {activePoint.details?.map((detail) => (
+            <p key={detail} className="text-muted-foreground">
+              {detail}
+            </p>
+          ))}
         </div>
       )}
     </div>

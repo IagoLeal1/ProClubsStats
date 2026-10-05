@@ -105,6 +105,19 @@ type PlayerMatchStatsRow = {
   created_at: string;
 };
 
+type ClubProgressRow = {
+  id: string;
+  club_id: string;
+  captured_at: string;
+  skill_rating: number | null;
+  games_played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals_for: number;
+  goals_against: number;
+};
+
 type FormationRow = Timestamps & {
   id: string;
   club_id: string;
@@ -262,6 +275,19 @@ export type Database = {
             columns: ["player_id"];
             isOneToOne: false;
             referencedRelation: "players";
+            referencedColumns: ["id"];
+          },
+        ]
+      >;
+      club_progress: TableDefinition<
+        ClubProgressRow,
+        "id" | "captured_at" | "skill_rating",
+        [
+          {
+            foreignKeyName: "club_progress_club_id_fkey";
+            columns: ["club_id"];
+            isOneToOne: false;
+            referencedRelation: "clubs";
             referencedColumns: ["id"];
           },
         ]

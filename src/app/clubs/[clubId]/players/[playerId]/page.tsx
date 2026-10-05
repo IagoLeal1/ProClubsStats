@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { MatchResult } from "@/components/matches/MatchResult";
 import { PlayerMatchLog } from "@/components/players/PlayerMatchLog";
-import { PlayerRatingChart, type RatingPoint } from "@/components/players/PlayerRatingChart";
+import { LineChart, type LineChartPoint } from "@/components/charts/LineChart";
 import { RatingBadge } from "@/components/players/RatingBadge";
 import { StatCard } from "@/components/stats/StatCard";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import {
   formatPositionGroupShort,
   formatRating,
 } from "@/lib/format";
+import { ratingScale } from "@/lib/stats/chart-scale";
 import { rankInSquad, summarizePlayerHistory, type SquadRank } from "@/lib/stats/player-history";
 import { goalsAndAssists } from "@/lib/stats/player-stats";
 import type { PlayerMatchEntry } from "@/types/match";
@@ -60,22 +61,49 @@ const axisDate = new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
 });
 
-function toRatingPoints(entries: PlayerMatchEntry[]): RatingPoint[] {
+function contributionLabel(goals: number, assists: number): string | null {
+  const parts = [
+    goals > 0 && `${goals} ${goals === 1 ? "gol" : "gols"}`,
+    assists > 0 && `${assists} ${assists === 1 ? "assistência" : "assistências"}`,
+  ].filter((part): part is string => Boolean(part));
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function toRatingPoints(entries: PlayerMatchEntry[]): LineChartPoint[] {
   return entries
     .filter((entry) => entry.stats.rating !== null)
     .slice(0, CHART_MATCHES)
     .reverse()
-    .map(({ match, stats }) => ({
-      href: `/clubs/${match.clubId}/matches/${match.id}`,
-      rating: stats.rating ?? 0,
-      opponent: match.opponent.name,
-      dateLabel: formatDateTime(match.playedAt),
-      axisLabel: axisDate.format(new Date(match.playedAt)),
-      score: `${match.goalsFor}–${match.goalsAgainst}`,
-      result: match.result,
-      goals: stats.goals,
-      assists: stats.assists,
-    }));
+    .map(({ match, stats }) => {
+      const contribution = contributionLabel(stats.goals, stats.assists);
+      return {
+        key: match.id,
+        href: `/clubs/${match.clubId}/matches/${match.id}`,
+        value: stats.rating ?? 0,
+        axisLabel: axisDate.format(new Date(match.playedAt)),
+        title: `vs ${match.opponent.name}`,
+        result: { value: match.result, label: `${match.goalsFor}–${match.goalsAgainst}` },
+        details: [formatDateTime(match.playedAt), ...(contribution ? [contribution] : [])],
+      };
+    });
+}
+
+function RatingChart({ history, average }: { history: PlayerMatchEntry[]; average: number | null }) {
+  const points = toRatingPoints(history);
+  if (points.length === 0) return <p className="text-sm text-muted-foreground">Sem notas registradas.</p>;
+  const scale = ratingScale(points.map((point) => point.value));
+  return (
+    <LineChart
+      points={points}
+      domain={scale.domain}
+      tickStep={scale.tickStep}
+      valueFormat="rating"
+      reference={average === null ? null : { value: average, label: `média ${formatRating(average)}` }}
+      ariaLabel={`Notas das últimas ${points.length} partidas${
+        average === null ? "" : `, média ${formatRating(average)}`
+      }`}
+    />
+  );
 }
 
 function PlayerHeader({ player }: { player: Player }) {
@@ -247,7 +275,7 @@ export default async function PlayerProfilePage({
                   últimas {Math.min(CHART_MATCHES, history.length)}
                 </p>
               </div>
-              <PlayerRatingChart points={toRatingPoints(history)} average={summary.averageRating} />
+              <RatingChart history={history} average={summary.averageRating} />
             </div>
 
             {summary.bestMatch && <BestMatch entry={summary.bestMatch} />}

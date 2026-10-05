@@ -55,3 +55,10 @@ export interface ClubMetrics {
   goalsPerGame: number | null;
   goalsAgainstPerGame: number | null;
 }
+
+/** Estado do clube registrado num momento (para a evolução do skill rating). */
+export interface ClubProgressPoint {
+  capturedAt: string;
+  skillRating: number | null;
+  record: ClubRecord;
+}

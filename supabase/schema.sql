@@ -206,6 +206,28 @@ create table if not exists public.player_match_stats (
 create index if not exists player_match_stats_player_id_idx on public.player_match_stats (player_id);
 
 -- -----------------------------------------------------------------------------
+-- club_progress
+-- A EA só informa o skill rating ATUAL. Guardamos um registro por nº de jogos
+-- de liga (uma linha a cada partida nova) para desenhar a evolução.
+-- -----------------------------------------------------------------------------
+create table if not exists public.club_progress (
+  id             uuid primary key default gen_random_uuid(),
+  club_id        uuid        not null references public.clubs (id) on delete cascade,
+  captured_at    timestamptz not null default now(),
+  skill_rating   integer,
+  games_played   integer     not null,
+  wins           integer     not null,
+  draws          integer     not null,
+  losses         integer     not null,
+  goals_for      integer     not null,
+  goals_against  integer     not null,
+  constraint club_progress_club_id_games_played_key unique (club_id, games_played)
+);
+
+create index if not exists club_progress_club_id_captured_at_idx
+  on public.club_progress (club_id, captured_at);
+
+-- -----------------------------------------------------------------------------
 -- formations / formation_players (montador de formação)
 -- Cada formação tem 11 vagas (slot_index 0–10). Vaga sem jogador = IA.
 -- Cada vaga guarda arquétipo, pontos fortes (atributos) e observação.
@@ -267,7 +289,7 @@ declare
 begin
   foreach t in array array[
     'clubs', 'players', 'matches', 'match_team_stats',
-    'player_match_stats', 'formations', 'formation_players'
+    'player_match_stats', 'club_progress', 'formations', 'formation_players'
   ]
   loop
     execute format('alter table public.%I enable row level security', t);

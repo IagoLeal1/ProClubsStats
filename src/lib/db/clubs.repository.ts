@@ -1,11 +1,17 @@
 import "server-only";
 
-import { PLATFORMS, type Club, type ClubSnapshot, type Platform } from "@/types/club";
+import {
+  PLATFORMS,
+  type Club,
+  type ClubProgressPoint,
+  type ClubSnapshot,
+  type Platform,
+} from "@/types/club";
 import type { TableRow } from "@/types/database";
 
 import { getDbAdmin, getDbReader } from "./client";
 import { parseEnum } from "./enums";
-import { unwrap, unwrapMaybe } from "./errors";
+import { assertOk, unwrap, unwrapMaybe } from "./errors";
 
 function mapClubRow(row: TableRow<"clubs">): Club {
   return {
@@ -133,4 +139,53 @@ export async function listClubsDueForSync(
     "listar clubes para sincronizar",
   );
   return rows.map(mapClubRow);
+}
+
+/**
+ * Registra o estado atual do clube na linha do tempo. Um registro por nº de
+ * jogos (unique club_id + games_played): sincronizar de novo não duplica.
+ */
+export async function recordClubProgress(club: Club): Promise<void> {
+  if (club.record.gamesPlayed === 0) return;
+  assertOk(
+    await getDbAdmin()
+      .from("club_progress")
+      .upsert(
+        {
+          club_id: club.id,
+          skill_rating: club.skillRating,
+          games_played: club.record.gamesPlayed,
+          wins: club.record.wins,
+          draws: club.record.draws,
+          losses: club.record.losses,
+          goals_for: club.record.goalsFor,
+          goals_against: club.record.goalsAgainst,
+        },
+        { onConflict: "club_id,games_played", ignoreDuplicates: true },
+      ),
+    "registrar evolução do clube",
+  );
+}
+
+export async function listClubProgress(clubId: string): Promise<ClubProgressPoint[]> {
+  const rows = unwrap(
+    await getDbReader()
+      .from("club_progress")
+      .select()
+      .eq("club_id", clubId)
+      .order("captured_at", { ascending: true }),
+    "listar evolução do clube",
+  );
+  return rows.map((row) => ({
+    capturedAt: row.captured_at,
+    skillRating: row.skill_rating,
+    record: {
+      gamesPlayed: row.games_played,
+      wins: row.wins,
+      draws: row.draws,
+      losses: row.losses,
+      goalsFor: row.goals_for,
+      goalsAgainst: row.goals_against,
+    },
+  }));
 }
