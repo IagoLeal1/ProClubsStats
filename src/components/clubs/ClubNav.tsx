@@ -9,6 +9,7 @@ const ITEMS = [
   { segment: "", label: "Visão geral" },
   { segment: "/players", label: "Jogadores" },
   { segment: "/matches", label: "Partidas" },
+  { segment: "/records", label: "Recordes" },
   { segment: "/formations", label: "Formações" },
 ] as const;
 

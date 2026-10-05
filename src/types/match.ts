@@ -100,3 +100,11 @@ export interface PlayerMatchEntry {
   match: Match;
   stats: PlayerMatchStatsValues;
 }
+
+/** Estatística de um jogador numa partida, com o nome — base de recordes e duplas. */
+export interface ClubPlayerMatchStat {
+  matchId: string;
+  playerId: string;
+  playerName: string;
+  stats: PlayerMatchStatsValues;
+}

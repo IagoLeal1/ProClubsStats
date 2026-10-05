@@ -45,3 +45,25 @@ export function assertOk(
 ): void {
   if (response.error) throw new DatabaseError(operation, response.error);
 }
+
+/** O Supabase limita cada resposta a 1000 linhas por padrão. */
+const PAGE_SIZE = 1000;
+
+/**
+ * Busca todas as páginas de uma consulta (o histórico cresce sem limite).
+ * `fetchPage` precisa ter ordenação estável para a paginação não pular linhas.
+ */
+export async function fetchAllPages<T>(
+  fetchPage: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: PostgrestLikeError | null }>,
+  operation: string,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const page = unwrap(await fetchPage(from, from + PAGE_SIZE - 1), operation);
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return rows;
+  }
+}

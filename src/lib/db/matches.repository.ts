@@ -3,6 +3,7 @@ import "server-only";
 import type { TableInsert, TableRow } from "@/types/database";
 import {
   MATCH_TYPES,
+  type ClubPlayerMatchStat,
   type Match,
   type MatchDetails,
   type MatchPlayerStats,
@@ -15,7 +16,7 @@ import { POSITION_GROUPS } from "@/types/player";
 
 import { getDbAdmin, getDbReader } from "./client";
 import { parseEnum, parseEnumOrNull } from "./enums";
-import { assertOk, unwrap, unwrapMaybe } from "./errors";
+import { assertOk, fetchAllPages, unwrap, unwrapMaybe } from "./errors";
 
 const MATCH_RESULTS: readonly MatchResult[] = ["W", "D", "L"];
 
@@ -166,11 +167,14 @@ export async function getMatchDetails(
 
 /** Todas as partidas salvas de um jogador, da mais recente para a mais antiga. */
 export async function listPlayerMatchHistory(playerId: string): Promise<PlayerMatchEntry[]> {
-  const rows = unwrap(
-    await getDbReader()
-      .from("player_match_stats")
-      .select("*, matches(*)")
-      .eq("player_id", playerId),
+  const rows = await fetchAllPages(
+    (from, to) =>
+      getDbReader()
+        .from("player_match_stats")
+        .select("*, matches(*)")
+        .eq("player_id", playerId)
+        .order("id")
+        .range(from, to),
     "buscar histórico do jogador",
   );
 
@@ -179,6 +183,42 @@ export async function listPlayerMatchHistory(playerId: string): Promise<PlayerMa
       match ? [{ match: mapMatchRow(match), stats: mapPlayerStatsValues(stats) }] : [],
     )
     .sort((a, b) => b.match.playedAt.localeCompare(a.match.playedAt));
+}
+
+/** Todas as partidas salvas do clube, da mais antiga para a mais recente. */
+export async function listAllClubMatches(clubId: string): Promise<Match[]> {
+  const rows = await fetchAllPages(
+    (from, to) =>
+      getDbReader()
+        .from("matches")
+        .select()
+        .eq("club_id", clubId)
+        .order("played_at", { ascending: true })
+        .order("id")
+        .range(from, to),
+    "listar todas as partidas",
+  );
+  return rows.map(mapMatchRow);
+}
+
+/** Estatísticas individuais de todas as partidas salvas do clube. */
+export async function listClubPlayerMatchStats(clubId: string): Promise<ClubPlayerMatchStat[]> {
+  const rows = await fetchAllPages(
+    (from, to) =>
+      getDbReader()
+        .from("player_match_stats")
+        .select("*, players(name), matches!inner(club_id)")
+        .eq("matches.club_id", clubId)
+        .order("id")
+        .range(from, to),
+    "listar estatísticas individuais do clube",
+  );
+  return rows.map((row) => ({
+    matchId: row.match_id,
+    playerId: row.player_id,
+    playerName: row.players?.name ?? "Jogador",
+    stats: mapPlayerStatsValues(row),
+  }));
 }
 
 // -----------------------------------------------------------------------------
