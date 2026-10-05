@@ -11,7 +11,12 @@ export async function generateMetadata({
 }: LayoutProps<"/clubs/[clubId]">): Promise<Metadata> {
   const { clubId } = await params;
   const club = await loadClub(clubId);
-  return { title: club.name };
+  return {
+    title: {
+      default: club.name,
+      template: `%s · ${club.name} · FC Clubs Stats`,
+    },
+  };
 }
 
 export default async function ClubLayout({ children, params }: LayoutProps<"/clubs/[clubId]">) {
