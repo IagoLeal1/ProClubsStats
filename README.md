@@ -36,7 +36,8 @@ O script é idempotente (pode rodar de novo sem erro).
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Project Settings → API (anon / publishable) | Leituras no servidor (RLS somente-select) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API (service_role / secret) | Escrita da sincronização — **somente servidor** |
 | `EA_API_BASE_URL` | opcional | Sobrescreve `https://proclubs.ea.com/api/fc` |
-| `CRON_SECRET` | opcional, `openssl rand -hex 32` | Protege `/api/cron/sync` |
+| `GITHUB_DISPATCH_TOKEN` | opcional (produção) | Faz o "Atualizar" pedir a sincronização ao GitHub Actions |
+| `NEXT_PUBLIC_SITE_URL` | opcional | URL pública para prévias de link (na Vercel é detectada) |
 
 A service role nunca chega ao browser: os módulos que a usam importam `server-only`, e o
 build falha se algum Client Component tentar importá-los.
@@ -48,29 +49,33 @@ npm run dev        # desenvolvimento
 npm run lint       # ESLint
 npm run typecheck  # gera tipos de rota do Next + tsc --noEmit
 npm run build      # build de produção
+npm run sync       # sincroniza clubes com dados velhos (CLUB_ID=… para um clube)
 ```
 
 ## Deploy na Vercel
 
-1. Importe o repositório na Vercel.
-2. Configure as variáveis de ambiente acima (Production e Preview).
-3. Deploy.
-4. Agendamento frequente (recomendado): o Vercel Cron do plano Hobby roda só 1×/dia
-   ([`vercel.json`](vercel.json)), mas a EA guarda apenas as 10 últimas partidas por tipo.
-   O workflow [`.github/workflows/sync-clubs.yml`](.github/workflows/sync-clubs.yml) chama
-   `/api/cron/sync` a cada 30 min, de graça. Configure uma vez:
+1. Importe o repositório na Vercel e configure as variáveis do Supabase (Production e Preview).
+2. **Sincronização pelo GitHub Actions.** A EA (Akamai) bloqueia os IPs da Vercel/AWS — testado:
+   HTTP 403 a partir da Vercel, HTTP 200 a partir do GitHub Actions com Node 22+ (o Node 20 é
+   bloqueado pela "impressão digital" da conexão). Por isso quem conversa com a EA em produção é
+   o workflow [`.github/workflows/sync-clubs.yml`](.github/workflows/sync-clubs.yml), que roda a
+   cada 15 min (grátis em repositório público) e grava direto no Supabase. Configure em
+   **Settings → Secrets and variables → Actions**:
 
-   ```bash
-   gh variable set APP_URL --body "https://<seu-site>.vercel.app"
-   gh secret set CRON_SECRET   # cole o mesmo valor configurado na Vercel
-   ```
+   | Tipo | Nome | Valor |
+   | ---- | ---- | ----- |
+   | Variable | `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto |
+   | Variable | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | chave publicável |
+   | Secret | `SUPABASE_SERVICE_ROLE_KEY` | chave secreta |
 
-Além disso, abrir a página de um clube com dados de mais de 10 min dispara uma sincronização
-em segundo plano (`after()` do Next.js) — a página responde na hora e os dados novos aparecem
-ao recarregar.
+   Para adicionar um clube novo manualmente: **Actions → Sincronizar clubes → Run workflow** com
+   o ID do clube na EA.
+3. **Opcional — "Atualizar" na hora.** Crie um token *fine-grained* no GitHub com acesso só a
+   este repositório e permissão **Actions: Read and write**, e coloque em `GITHUB_DISPATCH_TOKEN`
+   na Vercel. Aí o botão "Atualizar" e a abertura de um clube com dados velhos pedem a
+   sincronização ao Actions (os dados chegam em 1–2 min). Sem o token, vale o agendamento.
 
-> ⚠️ A API da EA fica atrás do Akamai. Os testes foram feitos de rede residencial; confirme
-> após o deploy que as chamadas a partir da Vercel não recebem 403.
+Localmente (rede residencial) a EA responde normalmente: o site sincroniza direto, sem Actions.
 
 ## Arquitetura
 
@@ -81,7 +86,6 @@ src/
 │   ├── search/               # /search      resultados da EA + clubes já salvos
 │   ├── clubs/[clubId]/       # dashboard, players, matches, matches/[matchId], formations
 │   ├── actions/sync-club.ts  # Server Actions: abrir clube / atualizar
-│   └── api/cron/sync/        # Route Handler para sincronização agendada
 ├── components/
 │   ├── clubs/ players/ matches/ formations/ layout/
 │   └── ui/                   # shadcn/ui
@@ -96,6 +100,7 @@ src/
 │   ├── stats/                # métricas derivadas (aproveitamento, G+A, rankings, ordenação)
 │   ├── env.ts errors.ts format.ts
 ├── services/sync/            # orquestração da sincronização (idempotente)
+scripts/sync-clubs.ts         # sincronização fora da Vercel (GitHub Actions)
 └── types/                    # modelos de domínio + tipos do banco
 ```
 
@@ -118,8 +123,9 @@ pesquisa → resultado da EA → "Ver estatísticas" (Server Action)
 - **Idempotente**: tudo é upsert sobre unique constraints; rodar duas vezes não duplica nada.
 - **Dados parciais**: falha em jogadores ou em um tipo de partida não aborta — vira aviso.
 - **Proteção da EA**: o mesmo clube não é ressincronizado em menos de 2 minutos.
-- **Gatilhos**: botão "Atualizar", abertura do clube com dados velhos (> 10 min, em segundo
-  plano), GitHub Actions a cada 30 min e Vercel Cron diário.
+- **Gatilhos**: GitHub Actions a cada 15 min; botão "Atualizar"; abertura do clube com dados
+  com mais de 20 min (em segundo plano). Onde a EA bloqueia o servidor (Vercel), os dois últimos
+  pedem a sincronização ao GitHub Actions (`requestClubSync`).
 - **Fingerprint**: `ea:<matchId>`; sem ID confiável, `fp:sha256(clube|adversário|data|placar)`.
 
 ### Banco
@@ -156,9 +162,12 @@ Detalhes, respostas e pendências em [`docs/ea-endpoints.md`](docs/ea-endpoints.
 skill rating, recorde, membros com estatísticas, partidas de liga e amistosos com estatísticas
 por equipe e por jogador.
 
+**Bloqueado:** chamadas a partir da Vercel (HTTP 403 do Akamai) — resolvido sincronizando pelo
+GitHub Actions (ver Deploy).
+
 **Pendente de validação:** partidas de playoff (sem amostra), cartões amarelos e interceptações
 (sem campo), mandante/visitante (sem campo), códigos de posição além de CB/CM/ST, nome da
-região, semântica de `winnerByDnf`, chamadas a partir de IPs da Vercel.
+região, semântica de `winnerByDnf`.
 
 ## Funcionalidades
 

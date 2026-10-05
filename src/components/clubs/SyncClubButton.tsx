@@ -17,6 +17,8 @@ interface SyncClubButtonProps {
   platform: Platform;
   /** open: sincroniza e abre o dashboard. refresh: sincroniza e fica na página. */
   mode: "open" | "refresh";
+  /** Rótulo alternativo do botão. */
+  label?: string;
   className?: string;
 }
 
@@ -27,7 +29,7 @@ const LABELS = {
   refresh: { idle: "Atualizar", pending: "Atualizando…", icon: RefreshCwIcon },
 } as const;
 
-export function SyncClubButton({ eaClubId, platform, mode, className }: SyncClubButtonProps) {
+export function SyncClubButton({ eaClubId, platform, mode, label, className }: SyncClubButtonProps) {
   const [state, formAction, pending] = useActionState(
     mode === "open" ? openClubAction : refreshClubAction,
     INITIAL_STATE,
@@ -46,7 +48,7 @@ export function SyncClubButton({ eaClubId, platform, mode, className }: SyncClub
         className="w-full sm:w-auto"
       >
         {mode === "refresh" && <Icon className={cn(pending && "animate-spin")} data-icon="inline-start" />}
-        {pending ? labels.pending : labels.idle}
+        {pending ? labels.pending : (label ?? labels.idle)}
         {mode === "open" && <Icon className={cn(pending && "animate-spin")} data-icon="inline-end" />}
       </Button>
 

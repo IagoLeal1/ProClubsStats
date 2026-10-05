@@ -28,8 +28,13 @@ const eaEnvSchema = z.object({
   EA_API_BASE_URL: optional(z.url()),
 });
 
-const cronEnvSchema = z.object({
-  CRON_SECRET: optional(z.string().min(16)),
+const githubEnvSchema = z.object({
+  /** Token (fine-grained) com permissão "Actions: write" neste repositório. */
+  GITHUB_DISPATCH_TOKEN: optional(z.string().min(20)),
+  /** "dono/repositório". Na Vercel vem de VERCEL_GIT_REPO_OWNER/SLUG. */
+  GITHUB_REPOSITORY: optional(z.string().regex(/^[\w.-]+\/[\w.-]+$/)),
+  VERCEL_GIT_REPO_OWNER: optional(z.string()),
+  VERCEL_GIT_REPO_SLUG: optional(z.string()),
 });
 
 function parseEnv<Schema extends z.ZodType>(
@@ -60,6 +65,15 @@ export function getEAEnv() {
   return eaEnv;
 }
 
-export function getCronSecret(): string | undefined {
-  return parseEnv(cronEnvSchema, "Cron").CRON_SECRET;
+/** Configuração para pedir sincronizações ao GitHub Actions (ou null). */
+export function getGitHubDispatchConfig(): { token: string; repository: string } | null {
+  const env = parseEnv(githubEnvSchema, "GitHub");
+  const repository =
+    env.GITHUB_REPOSITORY ??
+    (env.VERCEL_GIT_REPO_OWNER && env.VERCEL_GIT_REPO_SLUG
+      ? `${env.VERCEL_GIT_REPO_OWNER}/${env.VERCEL_GIT_REPO_SLUG}`
+      : undefined);
+  return env.GITHUB_DISPATCH_TOKEN && repository
+    ? { token: env.GITHUB_DISPATCH_TOKEN, repository }
+    : null;
 }

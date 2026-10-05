@@ -37,6 +37,16 @@ export default async function ClubDashboardPage({
 
   return (
     <div className="space-y-10">
+      {sync === "queued" && (
+        <Alert>
+          <TriangleAlertIcon />
+          <AlertTitle>Atualização pedida</AlertTitle>
+          <AlertDescription>
+            Os dados novos chegam em 1–2 minutos. Enquanto isso, você vê o que já está salvo.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {sync === "partial" && (
         <Alert>
           <TriangleAlertIcon />

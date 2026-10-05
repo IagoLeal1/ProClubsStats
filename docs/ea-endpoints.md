@@ -112,4 +112,4 @@ O site usa `crest-base-url` + `l<crestAssetId>.png`:
 | `regionId` | Valor bruto guardado em `ea_region_id`; mapeamento para nome não confirmado. |
 | `winnerByDnf` | Sempre `"0"` nas amostras; semântica exata de abandono a validar. |
 | Playoffs | Endpoint aceita `playoffMatch`, mas nenhuma amostra com dados foi obtida. |
-| Bloqueio de IPs de nuvem | Testado de rede residencial. Requisições a partir da Vercel podem receber 403 do Akamai — validar após o deploy. |
+| Bloqueio de IPs de nuvem | **Confirmado (2026-10-05):** Vercel (gru1, Node 24) → 403 do Akamai com qualquer cabeçalho. GitHub Actions → 200 com Node 22/24/26 e 403 com Node 20 (impressão digital TLS). Solução: sincronizar pelo GitHub Actions. |

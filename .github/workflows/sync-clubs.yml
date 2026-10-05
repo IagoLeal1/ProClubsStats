@@ -1,33 +1,71 @@
-# Sincroniza os clubes a cada 30 min chamando /api/cron/sync no site publicado.
-# O Vercel Cron do plano Hobby só roda 1×/dia; a EA guarda apenas as 10 últimas
-# partidas por tipo, então sem isso uma noite longa de jogos perderia partidas.
+# Sincroniza os clubes com a EA e grava no Supabase.
 #
-# Configuração (uma vez):
-#   gh variable set APP_URL --body "https://<seu-site>.vercel.app"
-#   gh secret set CRON_SECRET          # mesmo valor configurado na Vercel
+# Roda aqui, e não na Vercel, porque a EA (Akamai) bloqueia os IPs da Vercel/AWS.
+# Os servidores do GitHub são aceitos com Node 22+ (o Node 20 é bloqueado pela
+# "impressão digital" da conexão).
+#
+# A EA só guarda as 10 últimas partidas por tipo: rodar a cada 15 min garante
+# que nenhuma partida se perca (10 jogos levam mais de 2 h e meia).
+#
+# Configuração (uma vez), em Settings → Secrets and variables → Actions:
+#   variável NEXT_PUBLIC_SUPABASE_URL
+#   variável NEXT_PUBLIC_SUPABASE_ANON_KEY   (chave publicável)
+#   secret   SUPABASE_SERVICE_ROLE_KEY       (chave secreta)
+#
+# Rodar manualmente (ex.: adicionar um clube novo): Actions → Sincronizar clubes
+# → Run workflow, informando o ID do clube na EA.
 name: Sincronizar clubes
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
+    inputs:
+      club_id:
+        description: "ID do clube na EA (vazio = todos os clubes com dados velhos)"
+        required: false
+        default: ""
+      platform:
+        description: "Plataforma"
+        type: choice
+        options: [crossplay, switch]
+        default: crossplay
 
-permissions: {}
+# Pedidos repetidos (vários amigos clicando em "Atualizar") viram no máximo
+# uma execução rodando e uma na fila.
+concurrency:
+  group: sync-clubs-${{ inputs.club_id || 'all' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - name: Chamar /api/cron/sync
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Sincronizar
         env:
-          APP_URL: ${{ vars.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Entradas passam por variável de ambiente (nunca interpoladas no shell)
+          # e são validadas pelo script.
+          CLUB_ID: ${{ inputs.club_id }}
+          PLATFORM: ${{ inputs.platform }}
         run: |
-          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "APP_URL ou CRON_SECRET não configurados — nada a fazer."
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::warning::Secret SUPABASE_SERVICE_ROLE_KEY não configurado — nada a fazer."
             exit 0
           fi
-          curl --fail-with-body --silent --show-error --max-time 120 \
-            --header "Authorization: Bearer $CRON_SECRET" \
-            "${APP_URL%/}/api/cron/sync"
+          npm run sync
