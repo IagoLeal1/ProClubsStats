@@ -94,3 +94,9 @@ export interface MatchDetails extends Match {
   opponentStats: TeamMatchStats | null;
   players: MatchPlayerStats[];
 }
+
+/** Uma partida do histórico vista pelo lado de um jogador. */
+export interface PlayerMatchEntry {
+  match: Match;
+  stats: PlayerMatchStatsValues;
+}

@@ -29,6 +29,7 @@
   --color-win: var(--win);
   --color-draw: var(--draw);
   --color-loss: var(--loss);
+  --color-chart-1: var(--chart-1);
   --color-pitch: var(--pitch);
   --color-pitch-line: var(--pitch-line);
   --radius-sm: calc(var(--radius) * 0.6);
@@ -69,6 +70,10 @@
   --win: oklch(0.74 0.17 152);
   --draw: oklch(0.7 0.02 258);
   --loss: oklch(0.66 0.2 25);
+
+  /* Série de gráfico: verde um degrau abaixo do --primary, dentro da faixa de
+     luminosidade para fundo escuro (validado com o checklist de dataviz). */
+  --chart-1: oklch(0.66 0.16 155);
 
   --pitch: oklch(0.36 0.07 152);
   --pitch-line: oklch(1 0 0 / 35%);

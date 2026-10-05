@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { StarIcon } from "lucide-react";
 
 import { RatingBadge } from "@/components/players/RatingBadge";
@@ -40,7 +41,13 @@ const COLUMNS: Column[] = [
 ];
 
 /** Estatísticas individuais dos jogadores do clube na partida. */
-export function MatchPlayerStats({ players }: { players: MatchPlayerStatsData[] }) {
+export function MatchPlayerStats({
+  clubId,
+  players,
+}: {
+  clubId: string;
+  players: MatchPlayerStatsData[];
+}) {
   return (
     <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
       <Table>
@@ -59,11 +66,16 @@ export function MatchPlayerStats({ players }: { players: MatchPlayerStatsData[] 
             <TableRow key={player.playerId} className="group">
               <TableCell className="sticky left-0 z-10 bg-card pl-4 group-hover:bg-[color-mix(in_oklch,var(--card),var(--muted)_50%)]">
                 <div className="flex items-center gap-1.5">
-                  <span className="truncate font-medium">{player.playerName}</span>
+                  <Link
+                    href={`/clubs/${clubId}/players/${player.playerId}`}
+                    className="truncate font-medium hover:underline"
+                  >
+                    {player.playerName}
+                  </Link>
                   {player.manOfTheMatch && (
                     <StarIcon
                       className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
-                      aria-label="Craque da partida"
+                      aria-label="MVP da partida"
                     />
                   )}
                 </div>

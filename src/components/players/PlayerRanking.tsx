@@ -1,8 +1,10 @@
+import Link from "next/link";
 import {
   ActivityIcon,
   CrosshairIcon,
   FootprintsIcon,
   type LucideIcon,
+  MedalIcon,
   RouteIcon,
   StarIcon,
   TrophyIcon,
@@ -18,7 +20,11 @@ const ICONS: Record<string, LucideIcon> = {
   rating: StarIcon,
   games: ActivityIcon,
   passing: RouteIcon,
+  mvp: MedalIcon,
 };
+
+const profileHref = (entry: RankingCategory["entries"][number]) =>
+  `/clubs/${entry.player.clubId}/players/${entry.player.id}`;
 
 function formatValue(value: number, format: RankingFormat): string {
   if (format === "rating") return formatRating(value);
@@ -40,7 +46,9 @@ function RankingCard({ category }: { category: RankingCategory }) {
       {leader ? (
         <>
           <div className="mt-2 flex items-end justify-between gap-3">
-            <p className="min-w-0 truncate font-semibold">{leader.player.name}</p>
+            <Link href={profileHref(leader)} className="min-w-0 truncate font-semibold hover:underline">
+              {leader.player.name}
+            </Link>
             <p className="text-2xl font-semibold text-primary tabular">
               {formatValue(leader.value, category.format)}
             </p>
@@ -49,9 +57,9 @@ function RankingCard({ category }: { category: RankingCategory }) {
             <ol className="mt-3 space-y-1 border-t pt-3 text-sm" start={2}>
               {others.map((entry, index) => (
                 <li key={entry.player.id} className="flex justify-between gap-3 text-muted-foreground">
-                  <span className="truncate">
+                  <Link href={profileHref(entry)} className="truncate hover:text-foreground hover:underline">
                     {index + 2}. {entry.player.name}
-                  </span>
+                  </Link>
                   <span className="tabular">{formatValue(entry.value, category.format)}</span>
                 </li>
               ))}
@@ -67,7 +75,7 @@ function RankingCard({ category }: { category: RankingCategory }) {
 
 export function PlayerRanking({ categories }: { categories: RankingCategory[] }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {categories.map((category) => (
         <RankingCard key={category.id} category={category} />
       ))}

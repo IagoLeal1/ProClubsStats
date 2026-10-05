@@ -100,6 +100,7 @@ const RANKINGS: RankingDefinition[] = [
     requiresMinGames: true,
   },
   { id: "games", title: "Mais partidas", format: "integer", value: (p) => p.stats.gamesPlayed },
+  { id: "mvp", title: "Mais MVPs", format: "integer", value: (p) => p.stats.manOfTheMatch },
   {
     id: "passing",
     title: "Melhor passador",

@@ -7,6 +7,8 @@ import {
   type MatchDetails,
   type MatchPlayerStats,
   type MatchResult,
+  type PlayerMatchEntry,
+  type PlayerMatchStatsValues,
   type TeamMatchStats,
 } from "@/types/match";
 import { POSITION_GROUPS } from "@/types/player";
@@ -37,6 +39,26 @@ function mapMatchRow(row: TableRow<"matches">): Match {
     goalsAgainst: row.goals_against,
     result: parseEnum(MATCH_RESULTS, row.result, "D"),
     decidedByDnf: row.decided_by_dnf,
+  };
+}
+
+function mapPlayerStatsValues(row: TableRow<"player_match_stats">): PlayerMatchStatsValues {
+  return {
+    position: parseEnumOrNull(POSITION_GROUPS, row.position),
+    rating: row.rating,
+    goals: row.goals,
+    assists: row.assists,
+    shots: row.shots,
+    passes: row.passes,
+    passesCompleted: row.passes_completed,
+    tackles: row.tackles,
+    tackleAttempts: row.tackle_attempts,
+    interceptions: row.interceptions,
+    yellowCards: row.yellow_cards,
+    redCards: row.red_cards,
+    saves: row.saves,
+    manOfTheMatch: row.man_of_the_match,
+    secondsPlayed: row.seconds_played,
   };
 }
 
@@ -127,25 +149,11 @@ export async function getMatchDetails(
     return statsRow ? mapTeamStatsRow(statsRow) : null;
   };
 
-  const players: MatchPlayerStats[] = playerStatsRows.map((stats) => ({
+  const players: MatchPlayerStats[] = playerStatsRows.map(({ players: player, ...stats }) => ({
+    ...mapPlayerStatsValues(stats),
     playerId: stats.player_id,
-    playerName: stats.players?.name ?? "Jogador",
-    proName: stats.players?.pro_name ?? null,
-    position: parseEnumOrNull(POSITION_GROUPS, stats.position),
-    rating: stats.rating,
-    goals: stats.goals,
-    assists: stats.assists,
-    shots: stats.shots,
-    passes: stats.passes,
-    passesCompleted: stats.passes_completed,
-    tackles: stats.tackles,
-    tackleAttempts: stats.tackle_attempts,
-    interceptions: stats.interceptions,
-    yellowCards: stats.yellow_cards,
-    redCards: stats.red_cards,
-    saves: stats.saves,
-    manOfTheMatch: stats.man_of_the_match,
-    secondsPlayed: stats.seconds_played,
+    playerName: player?.name ?? "Jogador",
+    proName: player?.pro_name ?? null,
   }));
 
   return {
@@ -154,6 +162,23 @@ export async function getMatchDetails(
     opponentStats: statsFor("opponent"),
     players,
   };
+}
+
+/** Todas as partidas salvas de um jogador, da mais recente para a mais antiga. */
+export async function listPlayerMatchHistory(playerId: string): Promise<PlayerMatchEntry[]> {
+  const rows = unwrap(
+    await getDbReader()
+      .from("player_match_stats")
+      .select("*, matches(*)")
+      .eq("player_id", playerId),
+    "buscar histórico do jogador",
+  );
+
+  return rows
+    .flatMap(({ matches: match, ...stats }) =>
+      match ? [{ match: mapMatchRow(match), stats: mapPlayerStatsValues(stats) }] : [],
+    )
+    .sort((a, b) => b.match.playedAt.localeCompare(a.match.playedAt));
 }
 
 // -----------------------------------------------------------------------------

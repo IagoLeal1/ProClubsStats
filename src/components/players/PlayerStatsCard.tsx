@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Badge } from "@/components/ui/badge";
 import { formatInteger } from "@/lib/format";
 import type { Player } from "@/types/player";
@@ -11,7 +13,10 @@ const CARD_COLUMNS = PLAYER_STAT_COLUMNS.filter(
 /** Versão em card da linha da tabela, usada no mobile. */
 export function PlayerStatsCard({ player }: { player: Player }) {
   return (
-    <article className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+    <Link
+      href={`/clubs/${player.clubId}/players/${player.id}`}
+      className="block rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-colors hover:bg-accent"
+    >
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-medium">{player.name}</p>
@@ -40,6 +45,6 @@ export function PlayerStatsCard({ player }: { player: Player }) {
           </div>
         ))}
       </dl>
-    </article>
+    </Link>
   );
 }

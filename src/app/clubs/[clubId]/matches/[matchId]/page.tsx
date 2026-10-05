@@ -45,10 +45,10 @@ export default async function MatchDetailsPage({
       <section>
         <SectionHeading
           title="Jogadores utilizados"
-          description="Cartões amarelos e interceptações ainda não são fornecidos pela EA."
+          description="★ = MVP da partida · cartões amarelos e interceptações ainda não são fornecidos pela EA."
         />
         {match.players.length > 0 ? (
-          <MatchPlayerStats players={match.players} />
+          <MatchPlayerStats clubId={club.id} players={match.players} />
         ) : (
           <p className="text-sm text-muted-foreground">
             Nenhuma estatística individual registrada para esta partida.

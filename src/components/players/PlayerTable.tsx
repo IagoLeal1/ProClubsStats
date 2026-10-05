@@ -106,7 +106,12 @@ export function PlayerTable({ players, basePath, sort, direction }: PlayerTableP
               <TableCell className="sticky left-0 z-10 bg-card pl-4 group-hover:bg-[color-mix(in_oklch,var(--card),var(--muted)_50%)]">
                 <div className="flex items-center gap-2">
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{player.name}</p>
+                    <Link
+                      href={`/clubs/${player.clubId}/players/${player.id}`}
+                      className="block truncate font-medium hover:underline"
+                    >
+                      {player.name}
+                    </Link>
                     {player.proName && (
                       <p className="truncate text-xs text-muted-foreground">{player.proName}</p>
                     )}

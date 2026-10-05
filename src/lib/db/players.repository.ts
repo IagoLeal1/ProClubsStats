@@ -5,7 +5,7 @@ import { POSITION_GROUPS, type Player, type PlayerSnapshot } from "@/types/playe
 
 import { getDbAdmin, getDbReader } from "./client";
 import { parseEnumOrNull } from "./enums";
-import { assertOk, unwrap } from "./errors";
+import { assertOk, unwrap, unwrapMaybe } from "./errors";
 
 export interface PlayerIdentity {
   id: string;
@@ -55,6 +55,19 @@ export async function listPlayersByClub(clubId: string): Promise<Player[]> {
     "listar jogadores",
   );
   return rows.map(mapPlayerRow);
+}
+
+export async function getPlayerById(clubId: string, playerId: string): Promise<Player | null> {
+  const row = unwrapMaybe(
+    await getDbReader()
+      .from("players")
+      .select()
+      .eq("id", playerId)
+      .eq("club_id", clubId)
+      .maybeSingle(),
+    "buscar jogador",
+  );
+  return row ? mapPlayerRow(row) : null;
 }
 
 export async function listPlayerIdentities(clubId: string): Promise<PlayerIdentity[]> {
