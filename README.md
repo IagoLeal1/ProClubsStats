@@ -54,9 +54,20 @@ npm run build      # build de produção
 
 1. Importe o repositório na Vercel.
 2. Configure as variáveis de ambiente acima (Production e Preview).
-3. Deploy. O [`vercel.json`](vercel.json) agenda `/api/cron/sync` uma vez por dia (limite do
-   plano Hobby). No plano Pro, aumente a frequência (ex.: `*/30 * * * *`) para não perder
-   partidas de clubes que jogam muito.
+3. Deploy.
+4. Agendamento frequente (recomendado): o Vercel Cron do plano Hobby roda só 1×/dia
+   ([`vercel.json`](vercel.json)), mas a EA guarda apenas as 10 últimas partidas por tipo.
+   O workflow [`.github/workflows/sync-clubs.yml`](.github/workflows/sync-clubs.yml) chama
+   `/api/cron/sync` a cada 30 min, de graça. Configure uma vez:
+
+   ```bash
+   gh variable set APP_URL --body "https://<seu-site>.vercel.app"
+   gh secret set CRON_SECRET   # cole o mesmo valor configurado na Vercel
+   ```
+
+Além disso, abrir a página de um clube com dados de mais de 10 min dispara uma sincronização
+em segundo plano (`after()` do Next.js) — a página responde na hora e os dados novos aparecem
+ao recarregar.
 
 > ⚠️ A API da EA fica atrás do Akamai. Os testes foram feitos de rede residencial; confirme
 > após o deploy que as chamadas a partir da Vercel não recebem 403.
@@ -107,6 +118,8 @@ pesquisa → resultado da EA → "Ver estatísticas" (Server Action)
 - **Idempotente**: tudo é upsert sobre unique constraints; rodar duas vezes não duplica nada.
 - **Dados parciais**: falha em jogadores ou em um tipo de partida não aborta — vira aviso.
 - **Proteção da EA**: o mesmo clube não é ressincronizado em menos de 2 minutos.
+- **Gatilhos**: botão "Atualizar", abertura do clube com dados velhos (> 10 min, em segundo
+  plano), GitHub Actions a cada 30 min e Vercel Cron diário.
 - **Fingerprint**: `ea:<matchId>`; sem ID confiável, `fp:sha256(clube|adversário|data|placar)`.
 
 ### Banco

@@ -8,14 +8,16 @@ import { getUserMessage, logServerError } from "@/lib/errors";
 import { syncClub } from "@/services/sync/sync.service";
 
 /**
- * Sincronização periódica (Vercel Cron, ver vercel.json). Como a EA só expõe
- * as 10 últimas partidas por tipo, rodar com frequência evita perder jogos.
- * A Vercel envia `Authorization: Bearer <CRON_SECRET>` automaticamente.
+ * Sincronização periódica. Chamado pelo GitHub Actions a cada 30 min
+ * (.github/workflows/sync-clubs.yml) e pelo Vercel Cron 1×/dia (vercel.json).
+ * Como a EA só expõe as 10 últimas partidas por tipo, rodar com frequência
+ * evita perder jogos. Ambos enviam `Authorization: Bearer <CRON_SECRET>`.
  */
 export const maxDuration = 60;
 
 const CLUBS_PER_RUN = 5;
-const STALE_AFTER_MS = 30 * 60 * 1000;
+/** Menor que o intervalo do agendador (30 min) para nenhuma rodada pular o clube. */
+const STALE_AFTER_MS = 20 * 60 * 1000;
 
 function isAuthorized(request: NextRequest, secret: string): boolean {
   const received = Buffer.from(request.headers.get("authorization") ?? "");

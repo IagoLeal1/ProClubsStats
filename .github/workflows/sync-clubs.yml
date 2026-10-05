@@ -1,0 +1,33 @@
+# Sincroniza os clubes a cada 30 min chamando /api/cron/sync no site publicado.
+# O Vercel Cron do plano Hobby só roda 1×/dia; a EA guarda apenas as 10 últimas
+# partidas por tipo, então sem isso uma noite longa de jogos perderia partidas.
+#
+# Configuração (uma vez):
+#   gh variable set APP_URL --body "https://<seu-site>.vercel.app"
+#   gh secret set CRON_SECRET          # mesmo valor configurado na Vercel
+name: Sincronizar clubes
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Chamar /api/cron/sync
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL ou CRON_SECRET não configurados — nada a fazer."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 120 \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "${APP_URL%/}/api/cron/sync"

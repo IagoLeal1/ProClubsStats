@@ -5,7 +5,13 @@ import { PLATFORM_LABELS, type Club } from "@/types/club";
 import { ClubCrest } from "./ClubCrest";
 import { SyncClubButton } from "./SyncClubButton";
 
-export function ClubHeader({ club }: { club: Club }) {
+interface ClubHeaderProps {
+  club: Club;
+  /** Uma sincronização foi disparada em segundo plano nesta visita. */
+  autoSyncing?: boolean;
+}
+
+export function ClubHeader({ club, autoSyncing = false }: ClubHeaderProps) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex min-w-0 items-center gap-4">
@@ -21,6 +27,9 @@ export function ClubHeader({ club }: { club: Club }) {
             )}
             <span>ID EA {club.eaClubId}</span>
             {club.lastSyncedAt && <span>Atualizado {formatRelativeTime(club.lastSyncedAt)}</span>}
+            {autoSyncing && (
+              <span className="text-primary">Buscando partidas novas — recarregue em instantes</span>
+            )}
           </div>
         </div>
       </div>

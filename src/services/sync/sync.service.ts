@@ -15,6 +15,9 @@ import { syncClubPlayers, type PlayerSyncResult } from "./player-sync.service";
  */
 export const MIN_SYNC_INTERVAL_MS = 2 * 60 * 1000;
 
+/** Dados mais velhos que isso disparam sincronização automática ao abrir o clube. */
+export const AUTO_SYNC_AFTER_MS = 10 * 60 * 1000;
+
 export interface SyncResult {
   club: Club;
   /** false quando a sincronização foi pulada por ter rodado há pouco. */
@@ -56,10 +59,14 @@ function collectMatchWarnings(result: MatchSyncResult): string[] {
   return warnings;
 }
 
-export function isRecentlySynced(club: Club, now = Date.now()): boolean {
+function syncedWithin(club: Club, intervalMs: number, now = Date.now()): boolean {
   if (!club.lastSyncedAt) return false;
-  return now - new Date(club.lastSyncedAt).getTime() < MIN_SYNC_INTERVAL_MS;
+  return now - new Date(club.lastSyncedAt).getTime() < intervalMs;
 }
+
+export const isRecentlySynced = (club: Club) => syncedWithin(club, MIN_SYNC_INTERVAL_MS);
+
+export const needsAutoSync = (club: Club) => !syncedWithin(club, AUTO_SYNC_AFTER_MS);
 
 /**
  * Fluxo completo e idempotente:
@@ -88,4 +95,13 @@ export async function syncClub(
   if (matches) warnings.push(...collectMatchWarnings(matches));
 
   return { club, synced: true, players, matches, warnings };
+}
+
+/** Para rodar depois da resposta (`after`): nunca lança, só registra no log. */
+export async function syncClubInBackground(club: Club): Promise<void> {
+  try {
+    await syncClub(club.eaClubId, club.platform);
+  } catch (error) {
+    logServerError("sync:background", error);
+  }
 }
