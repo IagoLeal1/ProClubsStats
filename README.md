@@ -160,9 +160,24 @@ por equipe e por jogador.
 (sem campo), mandante/visitante (sem campo), códigos de posição além de CB/CM/ST, nome da
 região, semântica de `winnerByDnf`, chamadas a partir de IPs da Vercel.
 
+## Montador de formação
+
+`/clubs/[clubId]/formations` — escolha o esquema (4-3-3, 4-2-3-1, 4-4-2, 4-1-2-1-2,
+4-3-2-1, 3-5-2, 3-4-3, 5-3-2), clique em cada posição e defina jogador (ou IA), arquétipo
+do FC 27, até 6 pontos fortes (atributos como Curva e Passe curto) e uma observação.
+
+- Arquétipos, atributos e esquemas são dados em [`src/lib/formations/`](src/lib/formations/) —
+  se a EA mudar algo num patch, só esses arquivos mudam.
+- Trocar o esquema remapeia as vagas por setor e proximidade (o atacante continua atacante).
+- Posição e coordenadas de cada vaga vêm do esquema no servidor, nunca do navegador.
+- Bancos criados antes desta versão: rode
+  [`supabase/migrations/20261005_formation_slots.sql`](supabase/migrations/20261005_formation_slots.sql).
+
+> Sem login nesta versão: qualquer pessoa com o link pode editar as formações.
+
 ## Próximos passos sugeridos
 
-- Editor de formações (estrutura de banco e componentes `FootballPitch`/`FormationPlayer` prontos).
+- Proteger a edição de formações (ex.: código do clube) quando o link circular além do grupo.
 - Estatísticas por jogador calculadas a partir do histórico salvo (não só o total da EA).
 - Filtro de partidas por tipo e por adversário.
 - Tratar troca de gamertag (mesmo `ea_player_id` com nome diferente).

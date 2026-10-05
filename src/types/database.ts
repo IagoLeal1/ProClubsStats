@@ -115,10 +115,14 @@ type FormationRow = Timestamps & {
 type FormationPlayerRow = Timestamps & {
   id: string;
   formation_id: string;
-  player_id: string;
+  player_id: string | null;
+  slot_index: number;
   position: string;
   x_position: number;
   y_position: number;
+  archetype: string | null;
+  strengths: string[];
+  notes: string | null;
 };
 
 /** Colunas com default no banco ficam opcionais no insert. */
@@ -277,7 +281,7 @@ export type Database = {
       >;
       formation_players: TableDefinition<
         FormationPlayerRow,
-        AutoColumns,
+        AutoColumns | "player_id" | "archetype" | "strengths" | "notes",
         [
           {
             foreignKeyName: "formation_players_formation_id_fkey";

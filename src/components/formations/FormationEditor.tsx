@@ -1,0 +1,274 @@
+"use client";
+
+import { startTransition, useActionState, useEffect, useMemo, useState } from "react";
+import { Loader2Icon, SaveIcon, Trash2Icon } from "lucide-react";
+
+import {
+  deleteFormationAction,
+  saveFormationAction,
+  type FormationInputPayload,
+  type SaveFormationState,
+} from "@/app/actions/formations";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { findArchetype } from "@/lib/formations/archetypes";
+import { attributeLabel } from "@/lib/formations/attributes";
+import {
+  FORMATION_TEMPLATES,
+  FORMATION_TYPES,
+  isFormationType,
+  matchSlots,
+  SLOTS_PER_FORMATION,
+  type FormationType,
+} from "@/lib/formations/templates";
+import type { Formation } from "@/types/formation";
+
+import { FootballPitch } from "./FootballPitch";
+import { FormationPlayer } from "./FormationPlayer";
+import { SlotDialog, type DraftSlot, type EditorMember } from "./SlotDialog";
+
+interface FormationEditorProps {
+  clubId: string;
+  members: EditorMember[];
+  /** null = formação nova. */
+  formation: Formation | null;
+}
+
+const IDLE: SaveFormationState = { status: "idle" };
+
+function toDraftSlots(formation: Formation | null): DraftSlot[] {
+  return Array.from({ length: SLOTS_PER_FORMATION }, (_, slotIndex) => {
+    const saved = formation?.slots.find((slot) => slot.slotIndex === slotIndex);
+    return {
+      slotIndex,
+      playerId: saved?.playerId ?? null,
+      archetype: saved?.archetype ?? null,
+      strengths: saved?.strengths ?? [],
+      notes: saved?.notes ?? "",
+    };
+  });
+}
+
+function initialType(formation: Formation | null): FormationType {
+  return formation && isFormationType(formation.formationType) ? formation.formationType : "4-3-3";
+}
+
+/** Representação estável do rascunho, para saber se há alterações não salvas. */
+const snapshot = (name: string, type: string, slots: DraftSlot[]) =>
+  JSON.stringify([name.trim(), type, slots.map((slot) => ({ ...slot, notes: slot.notes.trim() }))]);
+
+export function FormationEditor({ clubId, members, formation }: FormationEditorProps) {
+  const [name, setName] = useState(formation?.name ?? "Titular");
+  const [formationType, setFormationType] = useState<FormationType>(initialType(formation));
+  const [slots, setSlots] = useState<DraftSlot[]>(() => toDraftSlots(formation));
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const [saveState, save, saving] = useActionState(saveFormationAction, IDLE);
+  const [deleteState, remove, deleting] = useActionState(deleteFormationAction, IDLE);
+
+  const template = FORMATION_TEMPLATES[formationType];
+  const memberNames = useMemo(() => new Map(members.map((member) => [member.id, member.name])), [members]);
+
+  // Depois de salvar, o servidor devolve a formação atualizada: comparar com ela
+  // diz se ainda há alterações pendentes.
+  const savedSnapshot = snapshot(
+    formation?.name ?? "",
+    formation?.formationType ?? "",
+    toDraftSlots(formation),
+  );
+  const dirty = !formation || snapshot(name, formationType, slots) !== savedSnapshot;
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  const assignedPositions = new Map(
+    slots.flatMap((slot) =>
+      slot.playerId ? [[slot.playerId, template[slot.slotIndex].position] as const] : [],
+    ),
+  );
+
+  function updateSlot(slotIndex: number, patch: Partial<Omit<DraftSlot, "slotIndex">>) {
+    setSlots((current) =>
+      current.map((slot) => {
+        if (slot.slotIndex === slotIndex) return { ...slot, ...patch };
+        // Um jogador só ocupa uma vaga: ao escalá-lo aqui, ele sai da anterior.
+        if (patch.playerId && slot.playerId === patch.playerId) return { ...slot, playerId: null };
+        return slot;
+      }),
+    );
+  }
+
+  function changeFormationType(next: FormationType) {
+    const mapping = matchSlots(formationType, next);
+    setSlots((current) =>
+      mapping.map((oldIndex, slotIndex) => {
+        const source = oldIndex === null ? undefined : current[oldIndex];
+        return source
+          ? { ...source, slotIndex }
+          : { slotIndex, playerId: null, archetype: null, strengths: [], notes: "" };
+      }),
+    );
+    setFormationType(next);
+  }
+
+  function handleSave() {
+    const payload: FormationInputPayload = {
+      clubId,
+      formationId: formation?.id ?? null,
+      name,
+      formationType,
+      slots: slots.map((slot) => ({ ...slot, notes: slot.notes.trim() || null })),
+    };
+    startTransition(() => save(payload));
+  }
+
+  function handleDelete() {
+    if (!formation) return;
+    startTransition(() => remove({ clubId, formationId: formation.id }));
+  }
+
+  const editingSlot = editingIndex === null ? null : slots[editingIndex];
+  const status = saveState.status === "error" ? saveState : deleteState.status === "error" ? deleteState : null;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="min-w-48 flex-1 space-y-1.5 sm:max-w-xs">
+          <span className="text-xs font-medium text-muted-foreground">Nome</span>
+          <Input value={name} maxLength={60} onChange={(event) => setName(event.target.value)} />
+        </label>
+        <label className="space-y-1.5">
+          <span className="block text-xs font-medium text-muted-foreground">Esquema</span>
+          <select
+            value={formationType}
+            onChange={(event) => {
+              if (isFormationType(event.target.value)) changeFormationType(event.target.value);
+            }}
+            className="h-8 rounded-lg border border-input bg-input/30 px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            {FORMATION_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="flex items-center gap-3">
+          <Button onClick={handleSave} disabled={saving || !dirty || !name.trim()}>
+            {saving ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
+            {saving ? "Salvando…" : formation ? "Salvar alterações" : "Criar formação"}
+          </Button>
+          <p aria-live="polite" className="text-xs text-muted-foreground">
+            {status ? (
+              <span className="text-destructive">{status.message}</span>
+            ) : dirty && formation ? (
+              "Alterações não salvas"
+            ) : saveState.status === "saved" ? (
+              "Salvo"
+            ) : null}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,26rem)_1fr]">
+        <FootballPitch className="mx-auto max-w-md">
+          {slots.map((slot) => {
+            const position = template[slot.slotIndex];
+            return (
+              <FormationPlayer
+                key={slot.slotIndex}
+                position={position.position}
+                name={slot.playerId ? (memberNames.get(slot.playerId) ?? "Jogador") : null}
+                detail={findArchetype(slot.archetype)?.name}
+                x={position.x}
+                y={position.y}
+                selected={editingIndex === slot.slotIndex}
+                onSelect={() => setEditingIndex(slot.slotIndex)}
+              />
+            );
+          })}
+        </FootballPitch>
+
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Clique em uma posição no campo ou na lista para escolher o jogador, o arquétipo e os
+            pontos fortes.
+          </p>
+          <ul className="divide-y rounded-xl bg-card ring-1 ring-foreground/10">
+            {slots.map((slot) => {
+              const position = template[slot.slotIndex];
+              const archetype = findArchetype(slot.archetype);
+              return (
+                <li key={slot.slotIndex}>
+                  <button
+                    type="button"
+                    onClick={() => setEditingIndex(slot.slotIndex)}
+                    className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50"
+                  >
+                    <span className="mt-0.5 w-10 shrink-0 rounded bg-secondary py-0.5 text-center text-[11px] font-semibold">
+                      {position.position}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">
+                        {slot.playerId ? memberNames.get(slot.playerId) : <span className="text-muted-foreground">IA</span>}
+                        {archetype && <span className="font-normal text-primary"> · {archetype.name}</span>}
+                      </span>
+                      {slot.strengths.length > 0 && (
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {slot.strengths.map(attributeLabel).join(", ")}
+                        </span>
+                      )}
+                      {slot.notes.trim() && (
+                        <span className="block truncate text-xs text-muted-foreground italic">
+                          {slot.notes}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+
+      {formation && (
+        <div className="flex flex-wrap items-center gap-2 border-t pt-6">
+          {confirmingDelete ? (
+            <>
+              <span className="text-sm">Excluir “{formation.name}” de vez?</span>
+              <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+                {deleting ? <Loader2Icon className="animate-spin" /> : <Trash2Icon />}
+                Sim, excluir
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                Cancelar
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" onClick={() => setConfirmingDelete(true)}>
+              <Trash2Icon /> Excluir formação
+            </Button>
+          )}
+        </div>
+      )}
+
+      {editingSlot && (
+        <SlotDialog
+          open
+          onOpenChange={(open) => !open && setEditingIndex(null)}
+          slot={editingSlot}
+          template={template[editingSlot.slotIndex]}
+          members={members}
+          assignedPositions={assignedPositions}
+          onChange={(patch) => updateSlot(editingSlot.slotIndex, patch)}
+        />
+      )}
+    </div>
+  );
+}

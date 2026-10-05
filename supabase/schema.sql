@@ -206,14 +206,16 @@ create table if not exists public.player_match_stats (
 create index if not exists player_match_stats_player_id_idx on public.player_match_stats (player_id);
 
 -- -----------------------------------------------------------------------------
--- formations / formation_players (estrutura para o futuro editor de escalação)
+-- formations / formation_players (montador de formação)
+-- Cada formação tem 11 vagas (slot_index 0–10). Vaga sem jogador = IA.
+-- Cada vaga guarda arquétipo, pontos fortes (atributos) e observação.
 -- x_position / y_position: porcentagem (0–100) da largura/comprimento do campo.
 -- y = 0 é a linha do próprio gol, y = 100 a linha do gol adversário.
 -- -----------------------------------------------------------------------------
 create table if not exists public.formations (
   id              uuid primary key default gen_random_uuid(),
   club_id         uuid        not null references public.clubs (id) on delete cascade,
-  name            text        not null,
+  name            text        not null check (char_length(name) between 1 and 60),
   formation_type  text        not null check (formation_type ~ '^[1-9](-[1-9]){2,4}$'),  -- ex.: 4-3-3, 4-2-3-1
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
@@ -229,13 +231,20 @@ create trigger formations_set_updated_at
 create table if not exists public.formation_players (
   id            uuid primary key default gen_random_uuid(),
   formation_id  uuid          not null references public.formations (id) on delete cascade,
-  player_id     uuid          not null references public.players (id) on delete cascade,
+  player_id     uuid          references public.players (id) on delete set null,  -- null = IA
+  slot_index    smallint      not null check (slot_index between 0 and 10),
   position      text          not null,
   x_position    numeric(5, 2) not null check (x_position between 0 and 100),
   y_position    numeric(5, 2) not null check (y_position between 0 and 100),
+  archetype     text,                                  -- ex.: maestro, finisher
+  strengths     text[]        not null default '{}' check (cardinality(strengths) <= 10),
+  notes         text          check (char_length(notes) <= 280),
   created_at    timestamptz   not null default now(),
   updated_at    timestamptz   not null default now(),
-  constraint formation_players_formation_id_player_id_key unique (formation_id, player_id)
+  constraint formation_players_formation_id_slot_index_key unique (formation_id, slot_index),
+  -- deferrable: permite trocar dois jogadores de vaga num único upsert
+  constraint formation_players_formation_id_player_id_key
+    unique (formation_id, player_id) deferrable initially deferred
 );
 
 create index if not exists formation_players_player_id_idx on public.formation_players (player_id);
