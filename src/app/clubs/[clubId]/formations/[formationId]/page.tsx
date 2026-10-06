@@ -177,7 +177,7 @@ export default async function FormationPage({ params }: PageProps<"/clubs/[clubI
               href={editHref}
               className="inline-flex h-12 items-center gap-2 border border-input px-5 font-display text-lg font-bold tracking-[0.08em] uppercase transition-colors hover:bg-surface"
             >
-              <PencilIcon className="size-4" aria-hidden /> Editar
+              <PencilIcon className="size-4" aria-hidden /> Editar prancheta
             </Link>
             <ShareButton
               text={shareText(club.name, formation, view)}
@@ -191,6 +191,12 @@ export default async function FormationPage({ params }: PageProps<"/clubs/[clubI
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)]">
         <div className="space-y-2">
           <LineupPitch clubId={club.id} cards={view.cards} chemistry={view.chemistry} />
+          <Link
+            href={editHref}
+            className="flex h-12 items-center justify-center gap-2 border border-dashed border-primary/60 font-display text-lg font-bold tracking-[0.08em] text-primary uppercase transition-colors hover:bg-primary/10"
+          >
+            <PencilIcon className="size-4" aria-hidden /> Mexer na prancheta
+          </Link>
           <p className="text-xs text-muted-foreground">
             Carta: OVR do Pro, vaga, arquétipo e nota média no setor (partidas salvas). ▲▼ = fase nos últimos
             jogos. Linhas verdes = assistências entre os escalados.

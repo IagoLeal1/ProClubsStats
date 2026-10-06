@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PlusIcon } from "lucide-react";
+import { PencilIcon, PlusIcon } from "lucide-react";
 
 import { FootballPitch } from "@/components/formations/FootballPitch";
 import { FormationPlayer } from "@/components/formations/FormationPlayer";
@@ -53,7 +53,7 @@ export default async function ClubFormationsPage({ params }: PageProps<"/clubs/[
       ) : (
         <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {formations.map((formation) => (
-            <li key={formation.id}>
+            <li key={formation.id} className="space-y-2">
               <Link
                 href={`/clubs/${club.id}/formations/${formation.id}`}
                 className="block space-y-3 border bg-card p-4 transition-colors hover:bg-surface"
@@ -81,6 +81,12 @@ export default async function ClubFormationsPage({ params }: PageProps<"/clubs/[
                     />
                   ))}
                 </FootballPitch>
+              </Link>
+              <Link
+                href={`/clubs/${club.id}/formations/${formation.id}/edit`}
+                className="flex h-11 items-center justify-center gap-2 border border-dashed border-primary/60 font-display text-base font-bold tracking-[0.08em] text-primary uppercase transition-colors hover:bg-primary/10"
+              >
+                <PencilIcon className="size-4" aria-hidden /> Mexer na prancheta
               </Link>
             </li>
           ))}

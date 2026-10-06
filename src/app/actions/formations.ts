@@ -135,8 +135,8 @@ export async function saveFormationAction(
     return { status: "error", message: getUserMessage(error) };
   }
 
-  // Formação nova: vai para a URL dela (permite compartilhar e continuar editando).
-  if (!input.formationId) redirect(`/clubs/${input.clubId}/formations/${formationId}`);
+  // Formação nova: continua na prancheta, agora na URL dela (dá para seguir mexendo e salvando).
+  if (!input.formationId) redirect(`/clubs/${input.clubId}/formations/${formationId}/edit`);
   return { status: "saved", savedAt: new Date().toISOString() };
 }
 
