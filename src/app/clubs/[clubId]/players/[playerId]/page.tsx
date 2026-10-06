@@ -14,7 +14,9 @@ import { FormBadge } from "@/components/players/FormBadge";
 import { PlayerMatchLog } from "@/components/players/PlayerMatchLog";
 import { PositionSplits } from "@/components/players/PositionSplits";
 import { RatingBadge } from "@/components/players/RatingBadge";
+import { ScoutReport } from "@/components/players/ScoutReport";
 import { AssistLinks } from "@/components/records/AssistLinks";
+import { ImpactDelta } from "@/components/records/ImpactTable";
 import { StatCard } from "@/components/stats/StatCard";
 import {
   listAllClubMatches,
@@ -31,6 +33,7 @@ import {
 } from "@/lib/format";
 import { ratingScale } from "@/lib/stats/chart-scale";
 import { computeForm, type PlayerForm } from "@/lib/stats/form";
+import { computeImpact, MIN_IMPACT_GAMES, type PlayerImpact } from "@/lib/stats/impact";
 import {
   computeAssistLinks,
   computePairs,
@@ -45,6 +48,7 @@ import {
 } from "@/lib/stats/player-history";
 import { goalsAndAssists } from "@/lib/stats/player-stats";
 import { splitByPosition } from "@/lib/stats/positions";
+import { MIN_SCOUT_GAMES, scoutPlayer } from "@/lib/stats/scouting";
 import { cn } from "@/lib/utils";
 import type { Club } from "@/types/club";
 import type { PlayerMatchEntry } from "@/types/match";
@@ -248,6 +252,35 @@ function FormCard({ form }: { form: PlayerForm }) {
   );
 }
 
+function ImpactCard({ impact }: { impact: PlayerImpact }) {
+  const { withPlayer, withoutPlayer, delta } = impact;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 border bg-card p-4 sm:px-5">
+      <div className="flex flex-col gap-1">
+        <span className="kicker text-muted-foreground">Impacto em campo</span>
+        <span className="text-sm">
+          Com ele: <span className="font-semibold">{formatPercent(withPlayer.pointsRate)}</span> de aproveitamento em{" "}
+          {withPlayer.games} jogos
+        </span>
+        <span className="text-sm text-muted-foreground">
+          {withoutPlayer
+            ? `Sem ele: ${formatPercent(withoutPlayer.pointsRate)} em ${withoutPlayer.games} jogos`
+            : "Jogou todas as partidas salvas"}
+        </span>
+      </div>
+      {delta !== null ? (
+        <ImpactDelta delta={delta} className="text-2xl" />
+      ) : (
+        withoutPlayer && (
+          <span className="text-xs text-muted-foreground">
+            Precisa de {MIN_IMPACT_GAMES}+ jogos com e sem ele para comparar
+          </span>
+        )
+      )}
+    </div>
+  );
+}
+
 function BestMatch({ entry }: { entry: PlayerMatchEntry }) {
   const { match, stats } = entry;
   return (
@@ -356,6 +389,9 @@ export default async function PlayerProfilePage({
     player.stats.averageRating,
   );
   const splits = splitByPosition(history);
+  const impact = computeImpact(clubMatches, clubStats, squad).find((candidate) => candidate.playerId === player.id);
+  const scouting = scoutPlayer(squad, player);
+  const scouted = scouting.some((metric) => metric.percentile !== null);
   const rank = (value: (candidate: Player) => number | null) => rankInSquad(squad, player, value);
   const { links } = computeAssistLinks(clubMatches, clubStats);
   const partners = computePairs(clubMatches, clubStats)
@@ -414,6 +450,16 @@ export default async function PlayerProfilePage({
         </div>
       </section>
 
+      {scouted && (
+        <section>
+          <SectionHeading
+            title="Raio-X"
+            description={`Por jogo na temporada, comparado com o elenco (membros com ${MIN_SCOUT_GAMES}+ jogos). Barra = percentil.`}
+          />
+          <ScoutReport metrics={scouting} />
+        </section>
+      )}
+
       <section className="space-y-4">
         <SectionHeading
           title="No histórico salvo"
@@ -434,6 +480,7 @@ export default async function PlayerProfilePage({
           <>
             <HistoryHighlights summary={summary} />
             {form && <FormCard form={form} />}
+            {impact && <ImpactCard impact={impact} />}
 
             <div className="border bg-card p-4 sm:p-5">
               <div className="mb-3 flex items-baseline justify-between gap-3">

@@ -1,4 +1,5 @@
 import { SeriesChart, type SeriesChartPoint } from "@/components/charts/SeriesChart";
+import { SliceStat } from "@/components/stats/SliceStat";
 import { formatPercent } from "@/lib/format";
 import { LAST_GAME_BUCKET, type NightCurve as NightCurveData, type NightSlice } from "@/lib/stats/night-curve";
 
@@ -16,18 +17,6 @@ function verdict(first: NightSlice, second: NightSlice): string {
   if (gap <= -VERDICT_GAP) return "Vocês caem no fim da noite.";
   if (gap >= VERDICT_GAP) return "Vocês crescem no fim da noite.";
   return "Ritmo parecido do começo ao fim da noite.";
-}
-
-function HalfStat({ label, slice }: { label: string; slice: NightSlice }) {
-  return (
-    <div className="flex flex-col gap-1 border bg-card p-4">
-      <span className="kicker text-muted-foreground">{label}</span>
-      <span className="figure text-4xl">{formatPercent(slice.pointsRate)}</span>
-      <span className="text-xs text-muted-foreground">
-        {recordLabel(slice)} em {plural(slice.games, "jogo", "jogos")}
-      </span>
-    </div>
-  );
 }
 
 /** Aproveitamento do clube do 1º ao último jogo da noite. */
@@ -50,8 +39,8 @@ export function NightCurve({ curve }: { curve: NightCurveData }) {
         <>
           <p className="font-semibold">{verdict(firstHalf, secondHalf)}</p>
           <div className="grid grid-cols-2 gap-3">
-            <HalfStat label="1ª metade da noite" slice={firstHalf} />
-            <HalfStat label="2ª metade da noite" slice={secondHalf} />
+            <SliceStat label="1ª metade da noite" slice={firstHalf} />
+            <SliceStat label="2ª metade da noite" slice={secondHalf} />
           </div>
         </>
       )}

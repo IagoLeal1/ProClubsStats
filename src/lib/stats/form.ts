@@ -21,6 +21,10 @@ export interface PlayerForm {
   trend: FormTrend;
 }
 
+/** Em alta / em baixa a partir da diferença de nota (já arredondada). */
+export const trendOf = (delta: number): FormTrend =>
+  delta >= FORM_THRESHOLD ? "up" : delta <= -FORM_THRESHOLD ? "down" : "steady";
+
 const average = (values: number[]) => values.reduce((total, value) => total + value, 0) / values.length;
 
 /** `ratings` vai do jogo mais recente para o mais antigo. */
@@ -31,8 +35,7 @@ export function computeForm(ratings: number[], seasonAverage: number | null): Pl
   const recentAverage = average(recent);
   const baseline = seasonAverage ?? average(ratings);
   const delta = Math.round((recentAverage - baseline) * 10) / 10;
-  const trend: FormTrend = delta >= FORM_THRESHOLD ? "up" : delta <= -FORM_THRESHOLD ? "down" : "steady";
-  return { ratings: [...recent].reverse(), recentAverage, baseline, delta, trend };
+  return { ratings: [...recent].reverse(), recentAverage, baseline, delta, trend: trendOf(delta) };
 }
 
 /** Fase de cada jogador do elenco, pelas partidas salvas. */

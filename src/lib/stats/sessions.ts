@@ -34,6 +34,23 @@ export function sessionRecord(matches: Match[]): SessionRecord {
   };
 }
 
+/** Campanha de um recorte de partidas, com o aproveitamento. */
+export interface RecordSlice extends SessionRecord {
+  games: number;
+  /** Aproveitamento (0–100): pontos ganhos sobre pontos disputados. */
+  pointsRate: number;
+}
+
+export function recordSlice(matches: Match[]): RecordSlice | null {
+  if (matches.length === 0) return null;
+  const record = sessionRecord(matches);
+  return {
+    ...record,
+    games: matches.length,
+    pointsRate: ((record.wins * 3 + record.draws) / (matches.length * 3)) * 100,
+  };
+}
+
 function toSession(matches: Match[]): GameSession {
   return {
     id: matches[0].id,

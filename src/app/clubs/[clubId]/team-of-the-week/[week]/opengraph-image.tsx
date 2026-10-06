@@ -10,89 +10,15 @@ import {
   loadImageDataUrl,
   loadOgFonts,
 } from "@/components/og/OgFrame";
+import { OgPitch } from "@/components/og/OgPitch";
 import { formatRating } from "@/lib/format";
-import { formatWeekRange, placeLineup, type TeamOfTheWeek } from "@/lib/stats/weeks";
+import { formatWeekRange, placeLineup } from "@/lib/stats/weeks";
 
 import { loadWeek } from "./load-week";
 
 export const alt = "Time da semana do clube";
 export const size = OG_SIZE;
 export const contentType = "image/png";
-
-/** Campo deitado (próprio gol à esquerda), na proporção 105 × 68. */
-const PITCH = { width: 588, height: 380 };
-const MARKER_WIDTH = 140;
-const CIRCLE = 48;
-
-const shortName = (name: string) => (name.length > 14 ? `${name.slice(0, 13)}…` : name);
-
-function OgPitch({ team }: { team: TeamOfTheWeek }) {
-  const { width, height } = PITCH;
-  const line = `2px solid ${OG_COLORS.pitchLine}`;
-  const stripe = width / 14;
-
-  return (
-    <div style={{ display: "flex", position: "relative", width, height, background: OG_COLORS.pitch, border: line }}>
-      {Array.from({ length: 7 }, (_, index) => (
-        <div
-          key={index}
-          style={{ position: "absolute", top: 0, bottom: 0, left: (index * 2 + 1) * stripe, width: stripe, background: OG_COLORS.pitchStripe }}
-        />
-      ))}
-      <div style={{ position: "absolute", top: 0, bottom: 0, left: width / 2 - 1, width: 2, background: OG_COLORS.pitchLine }} />
-      <div
-        style={{ position: "absolute", left: width / 2 - 52, top: height / 2 - 52, width: 104, height: 104, borderRadius: 52, border: line }}
-      />
-      <div
-        style={{ position: "absolute", left: 0, top: height * 0.2, width: width * 0.157, height: height * 0.6, border: line, borderLeft: "none" }}
-      />
-      <div
-        style={{ position: "absolute", right: 0, top: height * 0.2, width: width * 0.157, height: height * 0.6, border: line, borderRight: "none" }}
-      />
-
-      {placeLineup(team.lineup).map(({ line: player, x, y }) => {
-        const star = player.playerId === team.star?.playerId;
-        return (
-          <div
-            key={player.playerId}
-            style={{
-              position: "absolute",
-              // Campo em pé girado: o "y" do montador vira a horizontal.
-              left: (y / 100) * width - MARKER_WIDTH / 2,
-              top: (x / 100) * height - CIRCLE / 2,
-              width: MARKER_WIDTH,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: CIRCLE,
-                height: CIRCLE,
-                borderRadius: CIRCLE / 2,
-                border: `3px solid ${star ? OG_COLORS.primary : OG_COLORS.foreground}`,
-                background: star ? OG_COLORS.primary : OG_COLORS.background,
-                color: star ? OG_COLORS.background : OG_COLORS.foreground,
-                ...OG_FIGURE,
-                fontSize: 22,
-              }}
-            >
-              {formatRating(player.averageRating)}
-            </div>
-            <div style={{ display: "flex", padding: "1px 8px", background: OG_COLORS.background, fontSize: 17 }}>
-              {shortName(player.playerName)}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 export default async function Image({ params }: { params: Promise<{ clubId: string; week: string }> }) {
   const { clubId, week: weekId } = await params;
@@ -127,7 +53,16 @@ export default async function Image({ params }: { params: Promise<{ clubId: stri
               <span style={{ color: OG_COLORS.loss }}>{`${record.losses}D`}</span>
             </div>
           </div>
-          <OgPitch team={team} />
+          <OgPitch
+            markers={placeLineup(team.lineup).map(({ line, x, y }) => ({
+              key: line.playerId,
+              x,
+              y,
+              label: formatRating(line.averageRating),
+              name: line.playerName,
+              tone: line.playerId === star?.playerId ? "highlight" : "default",
+            }))}
+          />
         </div>
       </OgFrame>
     ),

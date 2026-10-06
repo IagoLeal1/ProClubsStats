@@ -136,21 +136,30 @@ export function OgFrame({ clubName, crest, children }: OgFrameProps) {
   );
 }
 
+/** Nomes longos (gamertags) encolhem e, no limite, são cortados para caber no bloco. */
+function fitName(value: string): { text: string; fontSize: number } {
+  const text = value.length > 14 ? `${value.slice(0, 13)}…` : value;
+  return { text, fontSize: text.length > 10 ? 36 : 44 };
+}
+
 /** Bloco "rótulo + valor" usado nas linhas de destaques. */
 export function OgStat({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  const name = fitName(value);
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
         flex: 1,
+        minWidth: 0,
+        overflow: "hidden",
         padding: "20px 24px",
         background: OG_COLORS.card,
         border: `2px solid ${OG_COLORS.border}`,
       }}
     >
       <div style={{ display: "flex", ...OG_KICKER, fontSize: 20, color: OG_COLORS.muted }}>{label}</div>
-      <div style={{ display: "flex", ...OG_FIGURE, fontSize: 44, marginTop: 6 }}>{value}</div>
+      <div style={{ display: "flex", ...OG_FIGURE, fontSize: name.fontSize, marginTop: 6 }}>{name.text}</div>
       {detail ? (
         <div style={{ display: "flex", fontSize: 22, color: OG_COLORS.muted, marginTop: 4 }}>{detail}</div>
       ) : null}

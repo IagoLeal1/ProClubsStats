@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { TrophyIcon } from "lucide-react";
+import { ArrowRightIcon, AwardIcon, ShirtIcon, TrophyIcon } from "lucide-react";
 
 import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { AssistLinks } from "@/components/records/AssistLinks";
+import { ClutchSection } from "@/components/records/ClutchSection";
+import { ImpactTable } from "@/components/records/ImpactTable";
 import { NightCurve } from "@/components/records/NightCurve";
 import { PairsTable } from "@/components/records/PairsTable";
 import { PerformanceList } from "@/components/records/PerformanceList";
 import { RecordCard } from "@/components/records/RecordCard";
 import { listAllClubMatches, listClubPlayerMatchStats } from "@/lib/db/matches.repository";
+import { listPlayersByClub } from "@/lib/db/players.repository";
 import { formatDateTime, formatInteger, formatRating } from "@/lib/format";
+import { computeClutch } from "@/lib/stats/clutch";
+import { computeImpact, MIN_IMPACT_GAMES } from "@/lib/stats/impact";
 import { computeNightCurve } from "@/lib/stats/night-curve";
 import { computeAssistLinks, computePairs } from "@/lib/stats/partnerships";
 import {
@@ -55,9 +60,10 @@ const plural = (count: number, [one, many]: [string, string]) => `${count} ${cou
 export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clubId]/records">) {
   const { clubId } = await params;
   const club = await loadClub(clubId);
-  const [matches, stats] = await Promise.all([
+  const [matches, stats, players] = await Promise.all([
     listAllClubMatches(club.id),
     listClubPlayerMatchStats(club.id),
+    listPlayersByClub(club.id),
   ]);
 
   if (matches.length === 0) {
@@ -80,12 +86,47 @@ export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clu
   const hatTricks = countHatTricks(stats);
   const matchHref = (match: Match) => `/clubs/${club.id}/matches/${match.id}`;
 
+  const shortcuts = [
+    {
+      href: `/clubs/${club.id}/team-of-the-week`,
+      icon: ShirtIcon,
+      label: "Time da semana",
+      detail: "Os melhores de cada semana no campo",
+    },
+    {
+      href: `/clubs/${club.id}/awards`,
+      icon: AwardIcon,
+      label: "Prêmios do mês",
+      detail: "Bola de Ouro, artilheiro, garçom, muralha e bagre",
+    },
+  ];
+
   return (
     <div className="space-y-10">
-      <p className="text-sm text-muted-foreground">
-        Calculados a partir de {formatInteger(matches.length)} partidas salvas desde{" "}
-        {formatDateTime(matches[0].playedAt)} (liga, playoffs e amistosos).
-      </p>
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Calculados a partir de {formatInteger(matches.length)} partidas salvas desde{" "}
+          {formatDateTime(matches[0].playedAt)} (liga, playoffs e amistosos).
+        </p>
+        <nav aria-label="Destaques por período" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {shortcuts.map(({ href, icon: Icon, label, detail }) => (
+            <Link
+              key={href}
+              href={href}
+              className="group flex items-center gap-4 border bg-card p-4 transition-colors hover:bg-surface"
+            >
+              <span className="clip-slant grid h-11 w-14 shrink-0 place-items-center bg-primary text-primary-foreground">
+                <Icon className="size-5" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-display text-xl font-bold uppercase">{label}</span>
+                <span className="block text-sm text-muted-foreground">{detail}</span>
+              </span>
+              <ArrowRightIcon className="size-5 shrink-0 text-muted-foreground group-hover:text-foreground" aria-hidden />
+            </Link>
+          ))}
+        </nav>
+      </div>
 
       <section>
         <SectionHeading title="Recordes do clube" />
@@ -153,6 +194,22 @@ export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clu
           description="Aproveitamento do 1º ao último jogo de cada noite (3 pontos por vitória, 1 por empate)."
         />
         <NightCurve curve={computeNightCurve(groupSessions(matches))} />
+      </section>
+
+      <section>
+        <SectionHeading
+          title="Impacto em campo"
+          description={`Aproveitamento do time com e sem cada jogador em campo. A diferença, em pontos, aparece quando há ${MIN_IMPACT_GAMES}+ jogos dos dois lados.`}
+        />
+        <ImpactTable clubId={club.id} impacts={computeImpact(matches, stats, players)} />
+      </section>
+
+      <section>
+        <SectionHeading
+          title="Jogos decisivos"
+          description="Partidas decididas por até 1 gol (empates incluídos) e quem cresce nelas."
+        />
+        <ClutchSection clubId={club.id} clutch={computeClutch(matches, stats)} />
       </section>
 
       <section>

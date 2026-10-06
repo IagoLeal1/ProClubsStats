@@ -1,7 +1,7 @@
 import { ArrowDownRightIcon, ArrowUpRightIcon, MinusIcon } from "lucide-react";
 
 import { formatRating } from "@/lib/format";
-import type { FormTrend, PlayerForm } from "@/lib/stats/form";
+import { trendOf, type FormTrend, type PlayerForm } from "@/lib/stats/form";
 import { cn } from "@/lib/utils";
 
 const TRENDS: Record<FormTrend, { label: string; icon: typeof MinusIcon; className: string }> = {
@@ -14,6 +14,26 @@ const TRENDS: Record<FormTrend, { label: string; icon: typeof MinusIcon; classNa
 export function formatFormDelta(delta: number): string {
   if (delta === 0) return "±0,0";
   return `${delta > 0 ? "+" : "−"}${formatRating(Math.abs(delta))}`;
+}
+
+/** Seta + diferença de nota, com rótulo para leitores de tela (ex.: nota nos jogos decisivos vs geral). */
+export function RatingDelta({ delta, title, className }: { delta: number; title?: string; className?: string }) {
+  const trend = TRENDS[trendOf(delta)];
+  const Icon = trend.icon;
+  return (
+    <span
+      title={title}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 font-display text-sm font-bold whitespace-nowrap tabular",
+        trend.className,
+        className,
+      )}
+    >
+      <Icon className="size-4" aria-hidden />
+      <span className="sr-only">{trend.label}</span>
+      {formatFormDelta(delta)}
+    </span>
+  );
 }
 
 interface FormBadgeProps {

@@ -1,15 +1,11 @@
 import type { Match } from "@/types/match";
 
-import { sessionRecord, type GameSession, type SessionRecord } from "./sessions";
+import { recordSlice, type GameSession, type RecordSlice } from "./sessions";
 
 /** Do 10º jogo da noite em diante, tudo entra numa barra só. */
 export const LAST_GAME_BUCKET = 10;
 
-export interface NightSlice extends SessionRecord {
-  games: number;
-  /** Aproveitamento (0–100): pontos ganhos sobre pontos disputados. */
-  pointsRate: number;
-}
+export type NightSlice = RecordSlice;
 
 export interface NightGameBucket extends NightSlice {
   /** 1 = primeiro jogo da noite; LAST_GAME_BUCKET inclui os seguintes. */
@@ -24,16 +20,6 @@ export interface NightCurve {
   firstHalf: NightSlice | null;
   secondHalf: NightSlice | null;
   overall: NightSlice | null;
-}
-
-function slice(matches: Match[]): NightSlice | null {
-  if (matches.length === 0) return null;
-  const record = sessionRecord(matches);
-  return {
-    ...record,
-    games: matches.length,
-    pointsRate: ((record.wins * 3 + record.draws) / (matches.length * 3)) * 100,
-  };
 }
 
 /** Como o time rende ao longo da noite: o 1º jogo, o 2º… e as duas metades. */
@@ -58,15 +44,15 @@ export function computeNightCurve(sessions: GameSession[]): NightCurve {
   const buckets = [...byOrder.entries()]
     .sort(([a], [b]) => a - b)
     .flatMap(([order, matches]) => {
-      const bucket = slice(matches);
+      const bucket = recordSlice(matches);
       return bucket ? [{ ...bucket, order }] : [];
     });
 
   return {
     nights: sessions.length,
     buckets,
-    firstHalf: slice(firstHalf),
-    secondHalf: slice(secondHalf),
-    overall: slice(sessions.flatMap((session) => session.matches)),
+    firstHalf: recordSlice(firstHalf),
+    secondHalf: recordSlice(secondHalf),
+    overall: recordSlice(sessions.flatMap((session) => session.matches)),
   };
 }

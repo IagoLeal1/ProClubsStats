@@ -1,20 +1,18 @@
 import type { ClubPlayerMatchStat, Match } from "@/types/match";
 import { POSITION_GROUPS, type PositionGroup } from "@/types/player";
 
-import { groupSessions, sessionRecord, type GameSession, type SessionRecord } from "./sessions";
+import {
+  byPerformance,
+  groupByPeriod,
+  localDate,
+  minGamesFor,
+  summarizePlayers,
+  type GamePeriod,
+  type PeriodPlayerLine,
+} from "./periods";
 
-const TIME_ZONE = "America/Sao_Paulo";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_ID = /^\d{4}-\d{2}-\d{2}$/;
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-const localDateParts = new Intl.DateTimeFormat("en-US", {
-  timeZone: TIME_ZONE,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  weekday: "short",
-});
 
 /** Data à meia-noite UTC → "AAAA-MM-DD". */
 const toId = (date: Date) => date.toISOString().slice(0, 10);
@@ -24,11 +22,8 @@ const toId = (date: Date) => date.toISOString().slice(0, 10);
  * segunda-feira, ex.: "2026-09-28".
  */
 export function weekIdOf(iso: string): string {
-  const parts = Object.fromEntries(
-    localDateParts.formatToParts(new Date(iso)).map((part) => [part.type, part.value]),
-  );
-  const localDay = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day));
-  return toId(new Date(localDay - WEEKDAYS.indexOf(parts.weekday) * DAY_MS));
+  const { year, month, day, weekday } = localDate(iso);
+  return toId(new Date(Date.UTC(year, month - 1, day) - weekday * DAY_MS));
 }
 
 /** Só aceita datas reais que caem numa segunda-feira. */
@@ -46,51 +41,21 @@ export function formatWeekRange(weekId: string): string {
   return `${short(start)} a ${short(end)}`;
 }
 
-export interface GameWeek {
-  id: string;
-  /** Ordem cronológica. */
-  sessions: GameSession[];
-  matches: Match[];
-  record: SessionRecord;
-}
+export type GameWeek = GamePeriod;
 
-/**
- * Agrupa as partidas (em ordem cronológica) por semana. A noite inteira conta
- * na semana em que começou, mesmo se passar da meia-noite de domingo.
- */
+/** Partidas (em ordem cronológica) agrupadas por semana. */
 export function groupWeeks(matches: Match[]): GameWeek[] {
-  const weeks: Omit<GameWeek, "record">[] = [];
-  for (const session of groupSessions(matches)) {
-    const id = weekIdOf(session.startedAt);
-    const current = weeks.at(-1);
-    if (current?.id === id) {
-      current.sessions.push(session);
-      current.matches.push(...session.matches);
-    } else {
-      weeks.push({ id, sessions: [session], matches: [...session.matches] });
-    }
-  }
-  return weeks.map((week) => ({ ...week, record: sessionRecord(week.matches) }));
+  return groupByPeriod(matches, weekIdOf);
 }
 
 // -----------------------------------------------------------------------------
 // Time da semana
 // -----------------------------------------------------------------------------
 
-export interface WeekPlayerLine {
-  playerId: string;
-  playerName: string;
-  games: number;
-  goals: number;
-  assists: number;
-  mvps: number;
-  averageRating: number | null;
-  /** Setor em que mais jogou na semana (empate: o de melhor nota). */
-  position: PositionGroup | null;
-}
+export type WeekPlayerLine = PeriodPlayerLine;
 
 export interface TeamOfTheWeek {
-  /** Em campo, do melhor para o pior. */
+  /** Em campo, do melhor para o pior. Aqui `position` é o setor em que foi escalado. */
   lineup: WeekPlayerLine[];
   /** Quem jogou mas ficou fora: poucos jogos ou setor já completo. */
   bench: WeekPlayerLine[];
@@ -108,97 +73,33 @@ export const LINE_SLOTS: Record<PositionGroup, number> = {
   forward: 3,
 };
 
-interface PositionTally {
-  games: number;
-  ratingSum: number;
-  rated: number;
-}
-
-interface LineDraft extends Omit<WeekPlayerLine, "averageRating" | "position"> {
-  ratings: number[];
-  positions: Map<PositionGroup, PositionTally>;
-}
-
-const average = (values: number[]) =>
-  values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : null;
-
-function mainPosition(positions: Map<PositionGroup, PositionTally>): PositionGroup | null {
-  let best: { group: PositionGroup; tally: PositionTally } | null = null;
-  for (const [group, tally] of positions) {
-    const rating = tally.rated > 0 ? tally.ratingSum / tally.rated : 0;
-    const bestRating = best && best.tally.rated > 0 ? best.tally.ratingSum / best.tally.rated : 0;
-    if (!best || tally.games > best.tally.games || (tally.games === best.tally.games && rating > bestRating)) {
-      best = { group, tally };
-    }
-  }
-  return best?.group ?? null;
-}
-
-/** Nota; depois MVPs, G+A e jogos. */
-const byPerformance = (a: WeekPlayerLine, b: WeekPlayerLine) =>
-  (b.averageRating ?? 0) - (a.averageRating ?? 0) ||
-  b.mvps - a.mvps ||
-  b.goals + b.assists - (a.goals + a.assists) ||
-  b.games - a.games;
+/**
+ * Setor lotado: o jogador vai para o vizinho com vaga, como um técnico faria
+ * (a EA marca quase todo mundo como meio-campo). Goleiro não muda de setor.
+ */
+const NEIGHBOR_SECTORS: Record<PositionGroup, PositionGroup[]> = {
+  goalkeeper: [],
+  defender: ["midfielder"],
+  midfielder: ["forward", "defender"],
+  forward: ["midfielder"],
+};
 
 export function pickTeamOfTheWeek(week: GameWeek, stats: ClubPlayerMatchStat[]): TeamOfTheWeek {
-  const matchIds = new Set(week.matches.map((match) => match.id));
-  const drafts = new Map<string, LineDraft>();
-
-  for (const stat of stats) {
-    if (!matchIds.has(stat.matchId)) continue;
-    const draft: LineDraft = drafts.get(stat.playerId) ?? {
-      playerId: stat.playerId,
-      playerName: stat.playerName,
-      games: 0,
-      goals: 0,
-      assists: 0,
-      mvps: 0,
-      ratings: [],
-      positions: new Map(),
-    };
-    const { rating, position } = stat.stats;
-    draft.games++;
-    draft.goals += stat.stats.goals;
-    draft.assists += stat.stats.assists;
-    if (stat.stats.manOfTheMatch) draft.mvps++;
-    if (rating !== null) draft.ratings.push(rating);
-    if (position) {
-      const tally = draft.positions.get(position) ?? { games: 0, ratingSum: 0, rated: 0 };
-      tally.games++;
-      if (rating !== null) {
-        tally.ratingSum += rating;
-        tally.rated++;
-      }
-      draft.positions.set(position, tally);
-    }
-    drafts.set(stat.playerId, draft);
-  }
-
-  const lines = [...drafts.values()]
-    .map(({ ratings, positions, ...line }) => ({
-      ...line,
-      averageRating: average(ratings),
-      position: mainPosition(positions),
-    }))
-    .sort(byPerformance);
-
-  // Titular precisa ter jogado ao menos um terço das partidas da semana.
-  const minGames = Math.max(1, Math.ceil(week.matches.length / 3));
+  const lines = summarizePlayers(week.matches, stats).sort(byPerformance);
+  const minGames = minGamesFor(week);
   const filled = Object.fromEntries(POSITION_GROUPS.map((group) => [group, 0])) as Record<PositionGroup, number>;
   const lineup: WeekPlayerLine[] = [];
   const bench: WeekPlayerLine[] = [];
 
   for (const line of lines) {
     const { position } = line;
-    if (
-      position !== null &&
-      line.averageRating !== null &&
-      line.games >= minGames &&
-      filled[position] < LINE_SLOTS[position]
-    ) {
-      lineup.push(line);
-      filled[position]++;
+    const sector =
+      position !== null && line.averageRating !== null && line.games >= minGames
+        ? [position, ...NEIGHBOR_SECTORS[position]].find((candidate) => filled[candidate] < LINE_SLOTS[candidate])
+        : undefined;
+    if (sector) {
+      lineup.push({ ...line, position: sector });
+      filled[sector]++;
     } else {
       bench.push(line);
     }

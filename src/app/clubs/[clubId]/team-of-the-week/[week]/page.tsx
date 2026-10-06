@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeftIcon, ArrowRightIcon, StarIcon } from "lucide-react";
+import { StarIcon } from "lucide-react";
 
+import { PeriodNav } from "@/components/layout/PeriodNav";
 import { ShareButton } from "@/components/layout/ShareButton";
 import { RatingBadge } from "@/components/players/RatingBadge";
 import { TeamOfTheWeekPitch } from "@/components/weeks/TeamOfTheWeekPitch";
 import { formatPositionGroup, formatRating } from "@/lib/format";
 import { formatWeekRange, type GameWeek, type TeamOfTheWeek, type WeekPlayerLine } from "@/lib/stats/weeks";
-import { cn } from "@/lib/utils";
 
 import { loadWeek } from "./load-week";
 
@@ -44,44 +44,12 @@ function shareText(clubName: string, week: GameWeek, team: TeamOfTheWeek): strin
 function benchReason(line: WeekPlayerLine, minGames: number): string {
   if (line.games < minGames) return `${plural(line.games, "jogo", "jogos")} (mínimo ${minGames})`;
   if (line.position === null || line.averageRating === null) return "sem nota ou setor";
-  return `${formatPositionGroup(line.position).toLowerCase()} completo`;
+  return `sem vaga (${formatPositionGroup(line.position).toLowerCase()} lotado)`;
 }
 
 function topBy(lines: WeekPlayerLine[], value: (line: WeekPlayerLine) => number): WeekPlayerLine | null {
   return (
     [...lines].filter((line) => value(line) > 0).sort((a, b) => value(b) - value(a) || a.games - b.games)[0] ?? null
-  );
-}
-
-const navLinkClass =
-  "inline-flex h-11 items-center gap-1.5 border border-input px-3.5 font-display text-base font-bold tracking-[0.06em] uppercase transition-colors hover:bg-surface";
-
-function WeekNav({ clubId, previousWeekId, nextWeekId }: { clubId: string; previousWeekId: string | null; nextWeekId: string | null }) {
-  const items = [
-    { weekId: previousWeekId, label: "Anterior", icon: ArrowLeftIcon, before: true },
-    { weekId: nextWeekId, label: "Próxima", icon: ArrowRightIcon, before: false },
-  ];
-  return (
-    <nav aria-label="Outras semanas" className="flex gap-2">
-      {items.map(({ weekId, label, icon: Icon, before }) => {
-        const content = (
-          <>
-            {before && <Icon className="size-4" aria-hidden />}
-            {label}
-            {!before && <Icon className="size-4" aria-hidden />}
-          </>
-        );
-        return weekId ? (
-          <Link key={label} href={`/clubs/${clubId}/team-of-the-week/${weekId}`} className={navLinkClass}>
-            {content}
-          </Link>
-        ) : (
-          <span key={label} aria-disabled className={cn(navLinkClass, "pointer-events-none opacity-40")}>
-            {content}
-          </span>
-        );
-      })}
-    </nav>
   );
 }
 
@@ -114,7 +82,11 @@ export default async function TeamOfTheWeekPage({ params }: PageProps<"/clubs/[c
               <span className="font-semibold text-loss">{record.losses}D</span>
             </p>
           </div>
-          <WeekNav clubId={club.id} previousWeekId={previousWeekId} nextWeekId={nextWeekId} />
+          <PeriodNav
+            label="Outras semanas"
+            previousHref={previousWeekId && `/clubs/${club.id}/team-of-the-week/${previousWeekId}`}
+            nextHref={nextWeekId && `/clubs/${club.id}/team-of-the-week/${nextWeekId}`}
+          />
         </div>
       </section>
 
@@ -123,7 +95,8 @@ export default async function TeamOfTheWeekPage({ params }: PageProps<"/clubs/[c
           <TeamOfTheWeekPitch clubId={club.id} team={team} />
           <p className="text-xs text-muted-foreground">
             Nota média da semana no círculo. Titular é quem jogou ao menos {team.minGames} das{" "}
-            {week.matches.length} partidas, no setor em que mais jogou — com as vagas de um 4-3-3.
+            {week.matches.length} partidas, no setor em que mais jogou — com as vagas de um 4-3-3; se o setor
+            lotar, vai para o vizinho.
           </p>
         </div>
 
