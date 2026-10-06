@@ -1,7 +1,8 @@
 "use client";
 
 import { startTransition, useActionState, useEffect, useMemo, useState } from "react";
-import { Loader2Icon, SaveIcon, Trash2Icon } from "lucide-react";
+import Link from "next/link";
+import { EyeIcon, Loader2Icon, SaveIcon, Trash2Icon } from "lucide-react";
 
 import {
   deleteFormationAction,
@@ -21,7 +22,7 @@ import {
   SLOTS_PER_FORMATION,
   type FormationType,
 } from "@/lib/formations/templates";
-import type { Formation } from "@/types/formation";
+import { EMPTY_ROLES, FORMATION_ROLES, type Formation, type FormationRoles } from "@/types/formation";
 
 import { FootballPitch } from "./FootballPitch";
 import { FormationPlayer } from "./FormationPlayer";
@@ -32,6 +33,8 @@ interface FormationEditorProps {
   members: EditorMember[];
   /** null = formação nova. */
   formation: Formation | null;
+  /** Link da escalação (modo de visualização) de uma formação já salva. */
+  viewHref?: string;
 }
 
 const IDLE: SaveFormationState = { status: "idle" };
@@ -54,13 +57,30 @@ function initialType(formation: Formation | null): FormationType {
 }
 
 /** Representação estável do rascunho, para saber se há alterações não salvas. */
-const snapshot = (name: string, type: string, slots: DraftSlot[]) =>
-  JSON.stringify([name.trim(), type, slots.map((slot) => ({ ...slot, notes: slot.notes.trim() }))]);
+const snapshot = (name: string, type: string, slots: DraftSlot[], roles: FormationRoles) =>
+  JSON.stringify([
+    name.trim(),
+    type,
+    slots.map((slot) => ({ ...slot, notes: slot.notes.trim() })),
+    FORMATION_ROLES.map(({ role }) => roles[role]),
+  ]);
 
-export function FormationEditor({ clubId, members, formation }: FormationEditorProps) {
+/** Funções só valem para quem está escalado: quem sai do time perde a função. */
+function activeRoles(roles: FormationRoles, slots: DraftSlot[]): FormationRoles {
+  const lineup = new Set(slots.flatMap((slot) => (slot.playerId ? [slot.playerId] : [])));
+  const result = { ...EMPTY_ROLES };
+  for (const { role } of FORMATION_ROLES) {
+    const playerId = roles[role];
+    result[role] = playerId && lineup.has(playerId) ? playerId : null;
+  }
+  return result;
+}
+
+export function FormationEditor({ clubId, members, formation, viewHref }: FormationEditorProps) {
   const [name, setName] = useState(formation?.name ?? "Titular");
   const [formationType, setFormationType] = useState<FormationType>(initialType(formation));
   const [slots, setSlots] = useState<DraftSlot[]>(() => toDraftSlots(formation));
+  const [roles, setRoles] = useState<FormationRoles>(formation?.roles ?? EMPTY_ROLES);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -76,8 +96,16 @@ export function FormationEditor({ clubId, members, formation }: FormationEditorP
     formation?.name ?? "",
     formation?.formationType ?? "",
     toDraftSlots(formation),
+    formation?.roles ?? EMPTY_ROLES,
   );
-  const dirty = !formation || snapshot(name, formationType, slots) !== savedSnapshot;
+  const currentRoles = activeRoles(roles, slots);
+  const dirty = !formation || snapshot(name, formationType, slots, currentRoles) !== savedSnapshot;
+  // Quem pode receber uma função: os escalados, na ordem das vagas.
+  const lineup = slots.flatMap((slot) =>
+    slot.playerId ? [{ playerId: slot.playerId, position: template[slot.slotIndex].position }] : [],
+  );
+  const roleBadges = (playerId: string | null) =>
+    playerId ? FORMATION_ROLES.filter(({ role }) => currentRoles[role] === playerId) : [];
 
   useEffect(() => {
     if (!dirty) return;
@@ -123,6 +151,7 @@ export function FormationEditor({ clubId, members, formation }: FormationEditorP
       name,
       formationType,
       slots: slots.map((slot) => ({ ...slot, notes: slot.notes.trim() || null })),
+      roles: currentRoles,
     };
     startTransition(() => save(payload));
   }
@@ -172,6 +201,14 @@ export function FormationEditor({ clubId, members, formation }: FormationEditorP
             {saving ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
             {saving ? "Salvando…" : formation ? "Salvar alterações" : "Criar formação"}
           </Button>
+          {viewHref && (
+            <Link
+              href={viewHref}
+              className="inline-flex h-11 items-center gap-2 border border-input px-4 font-display text-base font-bold tracking-[0.08em] uppercase transition-colors hover:bg-surface"
+            >
+              <EyeIcon className="size-4" aria-hidden /> Ver escalação
+            </Link>
+          )}
           <p aria-live="polite" className="text-xs text-muted-foreground">
             {status ? (
               <span className="text-destructive">{status.message}</span>
@@ -223,9 +260,20 @@ export function FormationEditor({ clubId, members, formation }: FormationEditorP
                       {position.position}
                     </span>
                     <span className="min-w-0 flex-1 pt-0.5">
-                      <span className="block truncate text-sm font-medium">
-                        {slot.playerId ? memberNames.get(slot.playerId) : <span className="text-muted-foreground">IA</span>}
-                        {archetype && <span className="font-normal text-primary"> · {archetype.name}</span>}
+                      <span className="flex items-center gap-1.5 text-sm font-medium">
+                        <span className="truncate">
+                          {slot.playerId ? memberNames.get(slot.playerId) : <span className="text-muted-foreground">IA</span>}
+                          {archetype && <span className="font-normal text-primary"> · {archetype.name}</span>}
+                        </span>
+                        {roleBadges(slot.playerId).map(({ role, label, badge }) => (
+                          <span
+                            key={role}
+                            title={label}
+                            className="grid size-5 shrink-0 place-items-center rounded-full bg-primary font-display text-[11px] font-extrabold text-primary-foreground"
+                          >
+                            {badge}
+                          </span>
+                        ))}
                       </span>
                       {slot.strengths.length > 0 && (
                         <span className="block truncate text-xs text-muted-foreground">
@@ -245,6 +293,42 @@ export function FormationEditor({ clubId, members, formation }: FormationEditorP
           </ul>
         </div>
       </div>
+
+      <section className="space-y-3 border bg-card p-4 sm:p-5">
+        <div className="space-y-1">
+          <h3 className="font-display text-lg font-bold tracking-[0.06em] uppercase">Capitão e bola parada</h3>
+          <p className="text-xs text-muted-foreground">
+            {lineup.length > 0
+              ? "Só quem está escalado pode receber uma função."
+              : "Escale alguém no campo para definir capitão e cobradores."}
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {FORMATION_ROLES.map(({ role, label, badge }) => (
+            <label key={role} className="space-y-1.5">
+              <span className="flex items-center gap-1.5">
+                <span className="grid size-5 place-items-center rounded-full bg-primary font-display text-[11px] font-extrabold text-primary-foreground">
+                  {badge}
+                </span>
+                <span className="kicker text-muted-foreground">{label}</span>
+              </span>
+              <select
+                value={currentRoles[role] ?? ""}
+                disabled={lineup.length === 0}
+                onChange={(event) => setRoles((current) => ({ ...current, [role]: event.target.value || null }))}
+                className="h-11 w-full rounded-sm border bg-background px-3 text-[15px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+              >
+                <option value="">Ninguém definido</option>
+                {lineup.map(({ playerId, position }) => (
+                  <option key={playerId} value={playerId}>
+                    {memberNames.get(playerId) ?? "Jogador"} ({position})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
+      </section>
 
       {formation && (
         <div className="flex flex-wrap items-center gap-2 border-t pt-6">

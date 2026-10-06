@@ -31,6 +31,12 @@ function mapFormationRow(row: FormationRow): Formation {
     clubId: row.club_id,
     name: row.name,
     formationType: row.formation_type,
+    roles: {
+      captain: row.captain_id,
+      penalties: row.penalty_taker_id,
+      freeKicks: row.free_kick_taker_id,
+      corners: row.corner_taker_id,
+    },
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     slots: row.formation_players.map(mapSlotRow).sort((a, b) => a.slotIndex - b.slotIndex),
@@ -64,7 +70,14 @@ export async function getFormation(clubId: string, formationId: string): Promise
 
 async function upsertFormationRecord(input: FormationInput): Promise<string | null> {
   const db = getDbAdmin();
-  const values = { name: input.name, formation_type: input.formationType };
+  const values = {
+    name: input.name,
+    formation_type: input.formationType,
+    captain_id: input.roles.captain,
+    penalty_taker_id: input.roles.penalties,
+    free_kick_taker_id: input.roles.freeKicks,
+    corner_taker_id: input.roles.corners,
+  };
 
   if (input.formationId) {
     const updated = unwrapMaybe(

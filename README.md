@@ -84,7 +84,7 @@ src/
 ├── app/                      # rotas (Server Components por padrão)
 │   ├── page.tsx              # /            busca + clubes recentes
 │   ├── search/               # /search      resultados da EA + clubes já salvos
-│   ├── clubs/[clubId]/       # dashboard, players, matches, sessions, records, team-of-the-week, formations
+│   ├── clubs/[clubId]/       # dashboard, players, matches, sessions, records, team-of-the-week, awards, formations
 │   ├── actions/sync-club.ts  # Server Actions: abrir clube / atualizar
 ├── components/
 │   ├── clubs/ players/ matches/ formations/ layout/
@@ -176,6 +176,14 @@ região, semântica de `winnerByDnf`.
 - **Jogadores** e **perfil de cada jogador**: temporada (EA) com posição no elenco, histórico
   salvo, gráfico de notas, melhor partida, rendimento por posição (nota em cada setor) e
   parcerias.
+- **Raio-X** (perfil): números da temporada por jogo (gols, assistências, passes, desarmes,
+  % de acerto, MVPs, nota) com a barra do percentil dentro do elenco, estilo Sofascore.
+- **Impacto em campo**: aproveitamento do time com e sem cada jogador (compara quando há 3+
+  jogos dos dois lados).
+- **Jogos decisivos**: campanha nas partidas decididas por até 1 gol e quem tem nota melhor
+  nelas do que no geral.
+- **Prêmios do mês**: Bola de Ouro, artilheiro, garçom, muralha (desarmes) e bagre do mês, com
+  card para o WhatsApp.
 - **Em alta / em baixa**: média dos últimos 5 jogos comparada com a média da temporada; ±0,3
   ou mais marca a fase (precisa de 3+ partidas salvas).
 - **Time da semana** (segunda a domingo, horário de Brasília): titulares por setor num 4-3-3,
@@ -186,8 +194,8 @@ região, semântica de `winnerByDnf`.
 - **Recordes**: goleadas, sequências, cansaço da noite (aproveitamento do 1º ao último jogo e
   1ª × 2ª metade), atuações individuais, hat-tricks, duplas e conexões de assistência
   (somente as garantidas pelos números de cada partida — a EA não informa lance a lance).
-- **Prévias para WhatsApp**: links do resumo da noite, do time da semana e do perfil geram
-  imagem com os números (`opengraph-image.tsx`, fontes Barlow em `assets/fonts`, licença SIL
+- **Prévias para WhatsApp**: links do resumo da noite, do time da semana, dos prêmios do mês,
+  das formações e do perfil geram imagem com os números (`opengraph-image.tsx`, fontes Barlow em `assets/fonts`, licença SIL
   OFL).
 - **Evolução do skill rating**: a EA só informa o valor atual; cada jogo de liga novo vira um
   ponto em `club_progress`.
@@ -198,13 +206,20 @@ região, semântica de `winnerByDnf`.
 4-3-2-1, 3-5-2, 3-4-3, 5-3-2), clique em cada posição e defina jogador (ou IA), arquétipo
 do FC 27, até 6 pontos fortes (atributos como Curva e Passe curto) e uma observação. Ao
 escolher o jogador, o montador mostra a nota de cada um naquele setor e sugere quem rende mais.
+Também dá para definir capitão e cobradores de pênalti, falta e escanteio.
+
+Abrir uma formação mostra a **escalação de TV**: cartas estilo FUT (OVR, vaga, arquétipo, nota
+no setor e fase), **linhas de química** ligando quem dá assistência para quem entre os
+escalados, ficha do time, bola parada e o plano de jogo de cada vaga. A edição fica em
+`/formations/[id]/edit`.
 
 - Arquétipos, atributos e esquemas são dados em [`src/lib/formations/`](src/lib/formations/) —
   se a EA mudar algo num patch, só esses arquivos mudam.
 - Trocar o esquema remapeia as vagas por setor e proximidade (o atacante continua atacante).
 - Posição e coordenadas de cada vaga vêm do esquema no servidor, nunca do navegador.
 - Bancos criados antes desta versão: rode
-  [`supabase/migrations/20261005_formation_slots.sql`](supabase/migrations/20261005_formation_slots.sql).
+  [`supabase/migrations/20261005_formation_slots.sql`](supabase/migrations/20261005_formation_slots.sql)
+  e [`supabase/migrations/20261006_formation_roles.sql`](supabase/migrations/20261006_formation_roles.sql).
 
 > Sem login nesta versão: qualquer pessoa com o link pode editar as formações.
 

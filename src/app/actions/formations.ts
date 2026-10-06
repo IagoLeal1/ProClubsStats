@@ -14,6 +14,7 @@ import {
   FORMATION_TYPES,
   SLOTS_PER_FORMATION,
 } from "@/lib/formations/templates";
+import type { FormationRoles } from "@/types/formation";
 
 const slotInputSchema = z.object({
   slotIndex: z.number().int().min(0).max(SLOTS_PER_FORMATION - 1),
@@ -23,6 +24,13 @@ const slotInputSchema = z.object({
   notes: z.string().trim().max(280).nullable(),
 });
 
+const rolesSchema = z.object({
+  captain: z.uuid().nullable(),
+  penalties: z.uuid().nullable(),
+  freeKicks: z.uuid().nullable(),
+  corners: z.uuid().nullable(),
+});
+
 const formationInputSchema = z
   .object({
     clubId: z.uuid(),
@@ -30,6 +38,7 @@ const formationInputSchema = z
     name: z.string().trim().min(1, "Dê um nome à formação.").max(60, "Nome muito longo."),
     formationType: z.enum(FORMATION_TYPES),
     slots: z.array(slotInputSchema).length(SLOTS_PER_FORMATION),
+    roles: rolesSchema,
   })
   .refine(
     (input) => new Set(input.slots.map((slot) => slot.slotIndex)).size === SLOTS_PER_FORMATION,
@@ -38,7 +47,11 @@ const formationInputSchema = z
   .refine((input) => {
     const players = input.slots.flatMap((slot) => (slot.playerId ? [slot.playerId] : []));
     return new Set(players).size === players.length;
-  }, "O mesmo jogador está em duas vagas.");
+  }, "O mesmo jogador está em duas vagas.")
+  .refine((input) => {
+    const lineup = new Set(input.slots.map((slot) => slot.playerId));
+    return Object.values(input.roles).every((playerId) => playerId === null || lineup.has(playerId));
+  }, "Capitão e cobradores precisam estar escalados.");
 
 /** O que o navegador envia. Não confiável: tudo é validado pelo schema acima. */
 export interface FormationInputPayload {
@@ -53,6 +66,7 @@ export interface FormationInputPayload {
     strengths: string[];
     notes: string | null;
   }[];
+  roles: FormationRoles;
 }
 
 export type SaveFormationState =
@@ -84,6 +98,7 @@ export async function saveFormationAction(
       clubId: input.clubId,
       name: input.name,
       formationType: input.formationType,
+      roles: input.roles,
       slots: input.slots.map((slot) => ({
         ...slot,
         position: template[slot.slotIndex].position,

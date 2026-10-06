@@ -16,6 +16,25 @@ export interface FormationSlot {
   notes: string | null;
 }
 
+/** Funções da formação: ids de jogadores escalados (null = ninguém definido). */
+export interface FormationRoles {
+  captain: string | null;
+  penalties: string | null;
+  freeKicks: string | null;
+  corners: string | null;
+}
+
+export type FormationRole = keyof FormationRoles;
+
+export const FORMATION_ROLES: { role: FormationRole; label: string; badge: string }[] = [
+  { role: "captain", label: "Capitão", badge: "C" },
+  { role: "penalties", label: "Pênaltis", badge: "P" },
+  { role: "freeKicks", label: "Faltas", badge: "F" },
+  { role: "corners", label: "Escanteios", badge: "E" },
+];
+
+export const EMPTY_ROLES: FormationRoles = { captain: null, penalties: null, freeKicks: null, corners: null };
+
 export interface Formation {
   id: string;
   clubId: string;
@@ -23,6 +42,7 @@ export interface Formation {
   /** Ex.: "4-3-3", "4-2-3-1". */
   formationType: string;
   slots: FormationSlot[];
+  roles: FormationRoles;
   createdAt: string;
   updatedAt: string;
 }
@@ -34,4 +54,5 @@ export interface FormationInput {
   name: string;
   formationType: string;
   slots: Omit<FormationSlot, "playerName">[];
+  roles: FormationRoles;
 }
