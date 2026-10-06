@@ -43,6 +43,8 @@ export interface Formation {
   formationType: string;
   slots: FormationSlot[];
   roles: FormationRoles;
+  /** Código de compartilhamento da tática gerado no FC (ex.: "3HPspCY9Bzf"). */
+  gameCode: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -55,4 +57,5 @@ export interface FormationInput {
   formationType: string;
   slots: Omit<FormationSlot, "playerName">[];
   roles: FormationRoles;
+  gameCode: string | null;
 }

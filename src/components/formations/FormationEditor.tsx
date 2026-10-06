@@ -69,12 +69,13 @@ function toDraftSlots(formation: Formation | null): DraftSlot[] {
 }
 
 /** Representação estável do rascunho, para saber se há alterações não salvas. */
-const snapshot = (name: string, label: string, slots: DraftSlot[], roles: FormationRoles) =>
+const snapshot = (name: string, label: string, slots: DraftSlot[], roles: FormationRoles, gameCode: string) =>
   JSON.stringify([
     name.trim(),
     label,
     slots.map((slot) => ({ ...slot, notes: slot.notes.trim() })),
     FORMATION_ROLES.map(({ role }) => roles[role]),
+    gameCode.trim(),
   ]);
 
 /** Funções só valem para quem está escalado: quem sai do time perde a função. */
@@ -97,6 +98,7 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
   const [custom, setCustom] = useState(formation !== null && savedPreset === null);
   const [slots, setSlots] = useState<DraftSlot[]>(() => toDraftSlots(formation));
   const [roles, setRoles] = useState<FormationRoles>(formation?.roles ?? EMPTY_ROLES);
+  const [gameCode, setGameCode] = useState(formation?.gameCode ?? "");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -114,9 +116,10 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
     formation?.formationType ?? "",
     toDraftSlots(formation),
     formation?.roles ?? EMPTY_ROLES,
+    formation?.gameCode ?? "",
   );
   const currentRoles = activeRoles(roles, slots);
-  const dirty = !formation || snapshot(name, label, slots, currentRoles) !== savedSnapshot;
+  const dirty = !formation || snapshot(name, label, slots, currentRoles, gameCode) !== savedSnapshot;
   // Quem pode receber uma função: os escalados, na ordem das vagas.
   const lineup = slots.flatMap((slot) => (slot.playerId ? [{ playerId: slot.playerId, position: slot.position }] : []));
   const roleBadges = (playerId: string | null) =>
@@ -181,6 +184,7 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
       preset,
       slots: slots.map((slot) => ({ ...slot, notes: slot.notes.trim() || null })),
       roles: currentRoles,
+      gameCode,
     };
     startTransition(() => save(payload));
   }
@@ -365,6 +369,26 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
             </label>
           ))}
         </div>
+      </section>
+
+      <section className="space-y-3 border bg-card p-4 sm:p-5">
+        <label className="block space-y-1.5">
+          <span className="font-display text-lg font-bold tracking-[0.06em] uppercase">Código da tática no FC</span>
+          <span className="block text-xs text-muted-foreground">
+            O código é gerado pelo próprio jogo: monte a tática no FC, use a opção de compartilhar e cole o código
+            aqui. Na escalação, a galera copia com um toque.
+          </span>
+          <Input
+            value={gameCode}
+            maxLength={40}
+            spellCheck={false}
+            autoCapitalize="off"
+            autoComplete="off"
+            placeholder="Ex.: 3HPspCY9Bzf"
+            onChange={(event) => setGameCode(event.target.value.replace(/\s/g, ""))}
+            className="h-11 max-w-sm rounded-sm bg-background font-mono text-lg tracking-wider"
+          />
+        </label>
       </section>
 
       {formation && (

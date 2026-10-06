@@ -46,6 +46,13 @@ const formationInputSchema = z
     preset: z.enum(FORMATION_TYPES).nullable(),
     slots: z.array(slotInputSchema).length(SLOTS_PER_FORMATION),
     roles: rolesSchema,
+    /** Código de compartilhamento do FC: sem espaços; vazio = nenhum. */
+    gameCode: z
+      .string()
+      .trim()
+      .max(40, "Código muito longo.")
+      .regex(/^\S*$/, "O código do FC não tem espaços.")
+      .transform((code) => code || null),
   })
   .refine(
     (input) => new Set(input.slots.map((slot) => slot.slotIndex)).size === SLOTS_PER_FORMATION,
@@ -83,6 +90,7 @@ export interface FormationInputPayload {
     notes: string | null;
   }[];
   roles: FormationRoles;
+  gameCode: string;
 }
 
 export type SaveFormationState =
@@ -126,6 +134,7 @@ export async function saveFormationAction(
       // O nome do esquema é calculado aqui, a partir das vagas, nunca vem pronto do navegador.
       formationType: formationLabel(input.preset, slots),
       roles: input.roles,
+      gameCode: input.gameCode,
       slots,
     });
     if (!formationId) return { status: "error", message: "Formação não encontrada." };

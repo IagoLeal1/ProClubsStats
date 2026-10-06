@@ -4,6 +4,7 @@ import { ArrowLeftRightIcon, PencilIcon } from "lucide-react";
 
 import { LineupPitch } from "@/components/formations/LineupPitch";
 import { BackLink } from "@/components/layout/BackLink";
+import { CopyButton } from "@/components/layout/CopyButton";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { ShareButton } from "@/components/layout/ShareButton";
 import { RatingBadge } from "@/components/players/RatingBadge";
@@ -33,6 +34,7 @@ function shareText(clubName: string, formation: Formation, view: LineupView): st
   const captain = view.cards.find((card) => card.roles.some(({ role }) => role === "captain"));
   const lines = [`⚽ ${clubName} — ${formation.name} (${formation.formationType})`, lineup];
   if (captain) lines.push(`Capitão: ${captain.name}`);
+  if (formation.gameCode) lines.push(`Código no FC: ${formation.gameCode}`);
   return lines.join("\n");
 }
 
@@ -43,6 +45,36 @@ function SummaryTile({ label, value, detail }: { label: string; value: string; d
       <span className="figure text-3xl">{value}</span>
       {detail && <span className="text-xs text-muted-foreground">{detail}</span>}
     </div>
+  );
+}
+
+/** Código de compartilhamento do FC: copiar com um toque ou, sem código, onde colar. */
+function GameCodeCard({ code, editHref }: { code: string | null; editHref: string }) {
+  if (!code) {
+    return (
+      <section className="space-y-2 border border-dashed bg-card p-4 text-sm text-muted-foreground sm:p-5">
+        <h3 className="kicker text-primary">Código da tática no FC</h3>
+        <p>
+          Ainda sem código. Monte a tática no jogo, use a opção de compartilhar e{" "}
+          <Link href={editHref} className="font-semibold text-foreground underline underline-offset-4">
+            cole o código na prancheta
+          </Link>
+          .
+        </p>
+      </section>
+    );
+  }
+  return (
+    <section className="space-y-3 border border-primary bg-card p-4 sm:p-5">
+      <h3 className="kicker text-primary">Código da tática no FC</h3>
+      <div className="flex flex-wrap items-center gap-3">
+        <code className="font-mono text-2xl font-bold tracking-wider break-all select-all">{code}</code>
+        <CopyButton text={code} label="Copiar código" />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        No FC, importe pela opção de usar código nas táticas personalizadas.
+      </p>
+    </section>
   );
 }
 
@@ -202,7 +234,10 @@ export default async function FormationPage({ params }: PageProps<"/clubs/[clubI
             jogos. Linhas verdes = assistências entre os escalados.
           </p>
         </div>
-        <TeamSheet view={view} />
+        <div className="flex flex-col gap-3">
+          <GameCodeCard code={formation.gameCode} editHref={editHref} />
+          <TeamSheet view={view} />
+        </div>
       </div>
 
       {humans.length > 0 && (

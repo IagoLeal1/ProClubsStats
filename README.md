@@ -210,7 +210,9 @@ com variações como "4-3-3 (ofensivo)" e "4-1-2-1-2 (aberto)") ou monte o seu: 
 cada posição e defina jogador (ou IA), a sigla, o arquétipo do FC 27, até 6 pontos fortes
 (atributos como Curva e Passe curto) e uma observação. Ao
 escolher o jogador, o montador mostra a nota de cada um naquele setor e sugere quem rende mais.
-Também dá para definir capitão e cobradores de pênalti, falta e escanteio.
+Também dá para definir capitão e cobradores de pênalti, falta e escanteio, e guardar o **código
+da tática no FC** (gerado pelo próprio jogo ao compartilhar a tática; o site só guarda e mostra
+com botão de copiar).
 
 Abrir uma formação mostra a **escalação de TV**: cartas estilo FUT (OVR, vaga, arquétipo, nota
 no setor e fase), **linhas de química** ligando quem dá assistência para quem entre os
@@ -224,8 +226,9 @@ escalados, ficha do time, bola parada e o plano de jogo de cada vaga. A edição
   calcula o nome do esquema a partir delas.
 - Bancos criados antes desta versão: rode, nesta ordem,
   [`20261005_formation_slots.sql`](supabase/migrations/20261005_formation_slots.sql),
-  [`20261006_formation_roles.sql`](supabase/migrations/20261006_formation_roles.sql) e
-  [`20261006_formation_free_layout.sql`](supabase/migrations/20261006_formation_free_layout.sql).
+  [`20261006_formation_roles.sql`](supabase/migrations/20261006_formation_roles.sql),
+  [`20261006_formation_free_layout.sql`](supabase/migrations/20261006_formation_free_layout.sql) e
+  [`20261006_formation_game_code.sql`](supabase/migrations/20261006_formation_game_code.sql).
 
 > Sem login nesta versão: qualquer pessoa com o link pode editar as formações.
 

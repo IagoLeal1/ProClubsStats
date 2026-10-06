@@ -57,6 +57,17 @@ export default async function Image({ params }: { params: Promise<{ clubId: stri
               <Fact label="Química" value={`${summary.chemistryAssists} assist.`} />
             ) : null}
             {captain?.name ? <Fact label="Capitão" value={captain.name} /> : null}
+            {formation.gameCode ? (
+              <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                <div style={{ display: "flex", ...OG_KICKER, fontSize: 18, color: OG_COLORS.primary, width: 150 }}>
+                  Código no FC
+                </div>
+                {/* Sem itálico nem fonte condensada: o código precisa ser lido sem confundir letras. */}
+                <div style={{ display: "flex", fontFamily: OG_FONTS.body, fontSize: 30, letterSpacing: "0.04em" }}>
+                  {formation.gameCode}
+                </div>
+              </div>
+            ) : null}
             <div style={{ display: "flex", fontSize: 20, color: OG_COLORS.muted, fontFamily: OG_FONTS.body, marginTop: 6 }}>
               {`${summary.humans} ${summary.humans === 1 ? "escalado" : "escalados"} + ${view.cards.length - summary.humans} da IA`}
             </div>

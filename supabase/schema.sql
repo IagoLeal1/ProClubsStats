@@ -244,6 +244,8 @@ create table if not exists public.formations (
   penalty_taker_id    uuid references public.players (id) on delete set null,
   free_kick_taker_id  uuid references public.players (id) on delete set null,
   corner_taker_id     uuid references public.players (id) on delete set null,
+  -- Código de compartilhamento da tática gerado no próprio FC (o site só guarda).
+  game_code       text check (game_code is null or char_length(game_code) between 1 and 40),
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );

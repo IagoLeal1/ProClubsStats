@@ -127,6 +127,7 @@ type FormationRow = Timestamps & {
   penalty_taker_id: string | null;
   free_kick_taker_id: string | null;
   corner_taker_id: string | null;
+  game_code: string | null;
 };
 
 type FormationPlayerRow = Timestamps & {
@@ -298,7 +299,12 @@ export type Database = {
       >;
       formations: TableDefinition<
         FormationRow,
-        AutoColumns | "captain_id" | "penalty_taker_id" | "free_kick_taker_id" | "corner_taker_id",
+        | AutoColumns
+        | "captain_id"
+        | "penalty_taker_id"
+        | "free_kick_taker_id"
+        | "corner_taker_id"
+        | "game_code",
         [
           {
             foreignKeyName: "formations_club_id_fkey";

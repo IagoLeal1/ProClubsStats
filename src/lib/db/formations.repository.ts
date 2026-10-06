@@ -37,6 +37,7 @@ function mapFormationRow(row: FormationRow): Formation {
       freeKicks: row.free_kick_taker_id,
       corners: row.corner_taker_id,
     },
+    gameCode: row.game_code,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     slots: row.formation_players.map(mapSlotRow).sort((a, b) => a.slotIndex - b.slotIndex),
@@ -77,6 +78,7 @@ async function upsertFormationRecord(input: FormationInput): Promise<string | nu
     penalty_taker_id: input.roles.penalties,
     free_kick_taker_id: input.roles.freeKicks,
     corner_taker_id: input.roles.corners,
+    game_code: input.gameCode,
   };
 
   if (input.formationId) {
