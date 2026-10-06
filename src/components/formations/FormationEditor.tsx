@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { EyeIcon, Loader2Icon, SaveIcon, Trash2Icon } from "lucide-react";
+import { EyeIcon, Loader2Icon, RotateCcwIcon, SaveIcon, Trash2Icon } from "lucide-react";
 
 import {
   deleteFormationAction,
@@ -15,18 +15,22 @@ import { Input } from "@/components/ui/input";
 import { findArchetype } from "@/lib/formations/archetypes";
 import { attributeLabel } from "@/lib/formations/attributes";
 import {
+  FORMATION_GROUPS,
   FORMATION_TEMPLATES,
-  FORMATION_TYPES,
+  formationLabel,
   isFormationType,
   matchSlots,
+  POSITION_IDS,
+  positionForSpot,
+  positionGroup,
   SLOTS_PER_FORMATION,
   type FormationType,
+  type PositionId,
 } from "@/lib/formations/templates";
 import { EMPTY_ROLES, FORMATION_ROLES, type Formation, type FormationRoles } from "@/types/formation";
 
-import { FootballPitch } from "./FootballPitch";
-import { FormationPlayer } from "./FormationPlayer";
 import { SlotDialog, type DraftSlot, type EditorMember } from "./SlotDialog";
+import { TacticalBoard, type SlotMove } from "./TacticalBoard";
 
 interface FormationEditorProps {
   clubId: string;
@@ -38,12 +42,24 @@ interface FormationEditorProps {
 }
 
 const IDLE: SaveFormationState = { status: "idle" };
+const DEFAULT_PRESET: FormationType = "4-3-3";
+/** Valor do seletor para "esquema personalizado". */
+const CUSTOM = "";
+
+const isPositionId = (value: string): value is PositionId => (POSITION_IDS as string[]).includes(value);
 
 function toDraftSlots(formation: Formation | null): DraftSlot[] {
+  const template = FORMATION_TEMPLATES[DEFAULT_PRESET];
   return Array.from({ length: SLOTS_PER_FORMATION }, (_, slotIndex) => {
     const saved = formation?.slots.find((slot) => slot.slotIndex === slotIndex);
+    const x = saved?.x ?? template[slotIndex].x;
+    const y = saved?.y ?? template[slotIndex].y;
     return {
       slotIndex,
+      // Siglas antigas fora do catálogo viram a da região do campo.
+      position: saved && isPositionId(saved.position) ? saved.position : saved ? positionForSpot(x, y) : template[slotIndex].position,
+      x,
+      y,
       playerId: saved?.playerId ?? null,
       archetype: saved?.archetype ?? null,
       strengths: saved?.strengths ?? [],
@@ -52,15 +68,11 @@ function toDraftSlots(formation: Formation | null): DraftSlot[] {
   });
 }
 
-function initialType(formation: Formation | null): FormationType {
-  return formation && isFormationType(formation.formationType) ? formation.formationType : "4-3-3";
-}
-
 /** Representação estável do rascunho, para saber se há alterações não salvas. */
-const snapshot = (name: string, type: string, slots: DraftSlot[], roles: FormationRoles) =>
+const snapshot = (name: string, label: string, slots: DraftSlot[], roles: FormationRoles) =>
   JSON.stringify([
     name.trim(),
-    type,
+    label,
     slots.map((slot) => ({ ...slot, notes: slot.notes.trim() })),
     FORMATION_ROLES.map(({ role }) => roles[role]),
   ]);
@@ -77,8 +89,12 @@ function activeRoles(roles: FormationRoles, slots: DraftSlot[]): FormationRoles 
 }
 
 export function FormationEditor({ clubId, members, formation, viewHref }: FormationEditorProps) {
+  const savedPreset = formation && isFormationType(formation.formationType) ? formation.formationType : null;
   const [name, setName] = useState(formation?.name ?? "Titular");
-  const [formationType, setFormationType] = useState<FormationType>(initialType(formation));
+  /** Último esquema pronto escolhido: base para "voltar ao esquema". */
+  const [basePreset, setBasePreset] = useState<FormationType>(savedPreset ?? DEFAULT_PRESET);
+  /** Vagas mexidas à mão (arrastar, sigla manual) ou formação salva como personalizada. */
+  const [custom, setCustom] = useState(formation !== null && savedPreset === null);
   const [slots, setSlots] = useState<DraftSlot[]>(() => toDraftSlots(formation));
   const [roles, setRoles] = useState<FormationRoles>(formation?.roles ?? EMPTY_ROLES);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -87,8 +103,9 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
   const [saveState, save, saving] = useActionState(saveFormationAction, IDLE);
   const [deleteState, remove, deleting] = useActionState(deleteFormationAction, IDLE);
 
-  const template = FORMATION_TEMPLATES[formationType];
   const memberNames = useMemo(() => new Map(members.map((member) => [member.id, member.name])), [members]);
+  const preset = custom ? null : basePreset;
+  const label = formationLabel(preset, slots);
 
   // Depois de salvar, o servidor devolve a formação atualizada: comparar com ela
   // diz se ainda há alterações pendentes.
@@ -99,11 +116,9 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
     formation?.roles ?? EMPTY_ROLES,
   );
   const currentRoles = activeRoles(roles, slots);
-  const dirty = !formation || snapshot(name, formationType, slots, currentRoles) !== savedSnapshot;
+  const dirty = !formation || snapshot(name, label, slots, currentRoles) !== savedSnapshot;
   // Quem pode receber uma função: os escalados, na ordem das vagas.
-  const lineup = slots.flatMap((slot) =>
-    slot.playerId ? [{ playerId: slot.playerId, position: template[slot.slotIndex].position }] : [],
-  );
+  const lineup = slots.flatMap((slot) => (slot.playerId ? [{ playerId: slot.playerId, position: slot.position }] : []));
   const roleBadges = (playerId: string | null) =>
     playerId ? FORMATION_ROLES.filter(({ role }) => currentRoles[role] === playerId) : [];
 
@@ -115,12 +130,11 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
   }, [dirty]);
 
   const assignedPositions = new Map(
-    slots.flatMap((slot) =>
-      slot.playerId ? [[slot.playerId, template[slot.slotIndex].position] as const] : [],
-    ),
+    slots.flatMap((slot) => (slot.playerId ? [[slot.playerId, slot.position] as const] : [])),
   );
 
   function updateSlot(slotIndex: number, patch: Partial<Omit<DraftSlot, "slotIndex">>) {
+    if (patch.position) setCustom(true);
     setSlots((current) =>
       current.map((slot) => {
         if (slot.slotIndex === slotIndex) return { ...slot, ...patch };
@@ -131,17 +145,32 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
     );
   }
 
-  function changeFormationType(next: FormationType) {
-    const mapping = matchSlots(formationType, next);
+  function moveSlots(moves: SlotMove[], relabel: boolean) {
+    const byIndex = new Map(moves.map((move) => [move.slotIndex, move] as const));
+    setCustom(true);
     setSlots((current) =>
-      mapping.map((oldIndex, slotIndex) => {
-        const source = oldIndex === null ? undefined : current[oldIndex];
-        return source
-          ? { ...source, slotIndex }
-          : { slotIndex, playerId: null, archetype: null, strengths: [], notes: "" };
+      current.map((slot) => {
+        const move = byIndex.get(slot.slotIndex);
+        if (!move) return slot;
+        return { ...slot, x: move.x, y: move.y, position: relabel ? positionForSpot(move.x, move.y) : slot.position };
       }),
     );
-    setFormationType(next);
+  }
+
+  /** Aplica um esquema pronto: cada jogador vai para a vaga mais parecida do novo desenho. */
+  function applyPreset(next: FormationType) {
+    const template = FORMATION_TEMPLATES[next];
+    setSlots((current) =>
+      matchSlots(current, template).map((oldIndex, slotIndex) => {
+        const source = oldIndex === null ? undefined : current[oldIndex];
+        const spot = { position: template[slotIndex].position, x: template[slotIndex].x, y: template[slotIndex].y };
+        return source
+          ? { ...source, ...spot, slotIndex }
+          : { slotIndex, ...spot, playerId: null, archetype: null, strengths: [], notes: "" };
+      }),
+    );
+    setBasePreset(next);
+    setCustom(false);
   }
 
   function handleSave() {
@@ -149,7 +178,7 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
       clubId,
       formationId: formation?.id ?? null,
       name,
-      formationType,
+      preset,
       slots: slots.map((slot) => ({ ...slot, notes: slot.notes.trim() || null })),
       roles: currentRoles,
     };
@@ -179,20 +208,26 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
         <label className="space-y-1.5">
           <span className="kicker block text-muted-foreground">Esquema</span>
           <select
-            value={formationType}
+            value={preset ?? CUSTOM}
             onChange={(event) => {
-              if (isFormationType(event.target.value)) changeFormationType(event.target.value);
+              if (isFormationType(event.target.value)) applyPreset(event.target.value);
+              else setCustom(true);
             }}
-            className="h-11 rounded-sm border bg-card px-3 font-display text-xl font-bold outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="h-11 max-w-[15rem] rounded-sm border bg-card px-3 font-display text-xl font-bold outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
-            {FORMATION_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
+            <option value={CUSTOM}>Personalizado</option>
+            {FORMATION_GROUPS.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.types.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             onClick={handleSave}
             disabled={saving || !dirty || !name.trim()}
@@ -221,33 +256,35 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
         </div>
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,26rem)_1fr]">
-        <FootballPitch className="mx-auto max-w-md">
-          {slots.map((slot) => {
-            const position = template[slot.slotIndex];
-            return (
-              <FormationPlayer
-                key={slot.slotIndex}
-                position={position.position}
-                name={slot.playerId ? (memberNames.get(slot.playerId) ?? "Jogador") : null}
-                detail={findArchetype(slot.archetype)?.name}
-                x={position.x}
-                y={position.y}
-                selected={editingIndex === slot.slotIndex}
-                onSelect={() => setEditingIndex(slot.slotIndex)}
-              />
-            );
-          })}
-        </FootballPitch>
+      {custom && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border border-dashed border-primary/50 px-4 py-3 text-sm">
+          <span>
+            Esquema personalizado: <span className="font-display text-lg font-bold">{label}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => applyPreset(basePreset)}
+            className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcwIcon className="size-4" aria-hidden /> Voltar ao {basePreset}
+          </button>
+        </div>
+      )}
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,29rem)_1fr]">
+        <div className="mx-auto w-full max-w-[29rem]">
+          <TacticalBoard
+            slots={slots}
+            names={memberNames}
+            selectedIndex={editingIndex}
+            onSelect={setEditingIndex}
+            onMove={moveSlots}
+          />
+        </div>
 
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">
-            Clique em uma posição no campo ou na lista para escolher o jogador, o arquétipo e os
-            pontos fortes.
-          </p>
           <ul className="divide-y border bg-card">
             {slots.map((slot) => {
-              const position = template[slot.slotIndex];
               const archetype = findArchetype(slot.archetype);
               return (
                 <li key={slot.slotIndex}>
@@ -257,7 +294,7 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
                     className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50"
                   >
                     <span className="clip-slant-sm w-11 shrink-0 bg-surface py-0.5 text-center font-display text-sm font-bold">
-                      {position.position}
+                      {slot.position}
                     </span>
                     <span className="min-w-0 flex-1 pt-0.5">
                       <span className="flex items-center gap-1.5 text-sm font-medium">
@@ -265,10 +302,10 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
                           {slot.playerId ? memberNames.get(slot.playerId) : <span className="text-muted-foreground">IA</span>}
                           {archetype && <span className="font-normal text-primary"> · {archetype.name}</span>}
                         </span>
-                        {roleBadges(slot.playerId).map(({ role, label, badge }) => (
+                        {roleBadges(slot.playerId).map(({ role, label: roleLabel, badge }) => (
                           <span
                             key={role}
-                            title={label}
+                            title={roleLabel}
                             className="grid size-5 shrink-0 place-items-center rounded-full bg-primary font-display text-[11px] font-extrabold text-primary-foreground"
                           >
                             {badge}
@@ -304,13 +341,13 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {FORMATION_ROLES.map(({ role, label, badge }) => (
+          {FORMATION_ROLES.map(({ role, label: roleLabel, badge }) => (
             <label key={role} className="space-y-1.5">
               <span className="flex items-center gap-1.5">
                 <span className="grid size-5 place-items-center rounded-full bg-primary font-display text-[11px] font-extrabold text-primary-foreground">
                   {badge}
                 </span>
-                <span className="kicker text-muted-foreground">{label}</span>
+                <span className="kicker text-muted-foreground">{roleLabel}</span>
               </span>
               <select
                 value={currentRoles[role] ?? ""}
@@ -356,7 +393,12 @@ export function FormationEditor({ clubId, members, formation, viewHref }: Format
           open
           onOpenChange={(open) => !open && setEditingIndex(null)}
           slot={editingSlot}
-          template={template[editingSlot.slotIndex]}
+          template={{
+            position: editingSlot.position,
+            group: positionGroup(editingSlot.position) ?? "midfielder",
+            x: editingSlot.x,
+            y: editingSlot.y,
+          }}
           members={members}
           assignedPositions={assignedPositions}
           onChange={(patch) => updateSlot(editingSlot.slotIndex, patch)}

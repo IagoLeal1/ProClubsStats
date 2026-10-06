@@ -10,14 +10,20 @@ import { getUserMessage, logServerError } from "@/lib/errors";
 import { ARCHETYPE_IDS } from "@/lib/formations/archetypes";
 import { ATTRIBUTE_IDS, MAX_STRENGTHS } from "@/lib/formations/attributes";
 import {
+  FIELD_BOUNDS,
   FORMATION_TEMPLATES,
   FORMATION_TYPES,
+  formationLabel,
+  POSITION_IDS,
   SLOTS_PER_FORMATION,
 } from "@/lib/formations/templates";
 import type { FormationRoles } from "@/types/formation";
 
 const slotInputSchema = z.object({
   slotIndex: z.number().int().min(0).max(SLOTS_PER_FORMATION - 1),
+  position: z.enum(POSITION_IDS),
+  x: z.number().min(FIELD_BOUNDS.minX).max(FIELD_BOUNDS.maxX),
+  y: z.number().min(0).max(FIELD_BOUNDS.maxY),
   playerId: z.uuid().nullable(),
   archetype: z.enum(ARCHETYPE_IDS).nullable(),
   strengths: z.array(z.enum(ATTRIBUTE_IDS)).max(MAX_STRENGTHS),
@@ -36,13 +42,20 @@ const formationInputSchema = z
     clubId: z.uuid(),
     formationId: z.uuid().nullable(),
     name: z.string().trim().min(1, "Dê um nome à formação.").max(60, "Nome muito longo."),
-    formationType: z.enum(FORMATION_TYPES),
+    /** Esquema pronto de partida; null = personalizado. */
+    preset: z.enum(FORMATION_TYPES).nullable(),
     slots: z.array(slotInputSchema).length(SLOTS_PER_FORMATION),
     roles: rolesSchema,
   })
   .refine(
     (input) => new Set(input.slots.map((slot) => slot.slotIndex)).size === SLOTS_PER_FORMATION,
     "Vagas repetidas na formação.",
+  )
+  .refine(
+    (input) =>
+      input.slots.every((slot) => (slot.slotIndex === 0) === (slot.position === "GOL")) &&
+      input.slots.every((slot) => slot.slotIndex === 0 || slot.y >= FIELD_BOUNDS.minY),
+    "Só a vaga do goleiro fica no gol.",
   )
   .refine((input) => {
     const players = input.slots.flatMap((slot) => (slot.playerId ? [slot.playerId] : []));
@@ -58,9 +71,12 @@ export interface FormationInputPayload {
   clubId: string;
   formationId: string | null;
   name: string;
-  formationType: string;
+  preset: string | null;
   slots: {
     slotIndex: number;
+    position: string;
+    x: number;
+    y: number;
     playerId: string | null;
     archetype: string | null;
     strengths: string[];
@@ -83,8 +99,18 @@ export async function saveFormationAction(
     return { status: "error", message: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
   const input = parsed.data;
-  // Posição e coordenadas vêm do esquema tático, nunca do navegador.
-  const template = FORMATION_TEMPLATES[input.formationType];
+  // O goleiro fica sempre no gol; as demais vagas vêm do navegador, dentro dos limites do campo.
+  const goalkeeper = FORMATION_TEMPLATES["4-3-3"][0];
+  const round = (value: number) => Math.round(value * 100) / 100;
+  const slots = [...input.slots]
+    .sort((a, b) => a.slotIndex - b.slotIndex)
+    .map((slot) => ({
+      ...slot,
+      x: slot.slotIndex === 0 ? goalkeeper.x : round(slot.x),
+      y: slot.slotIndex === 0 ? goalkeeper.y : round(slot.y),
+      strengths: [...new Set(slot.strengths)],
+      notes: slot.notes || null,
+    }));
 
   let formationId: string | null;
   try {
@@ -97,16 +123,10 @@ export async function saveFormationAction(
       formationId: input.formationId,
       clubId: input.clubId,
       name: input.name,
-      formationType: input.formationType,
+      // O nome do esquema é calculado aqui, a partir das vagas, nunca vem pronto do navegador.
+      formationType: formationLabel(input.preset, slots),
       roles: input.roles,
-      slots: input.slots.map((slot) => ({
-        ...slot,
-        position: template[slot.slotIndex].position,
-        x: template[slot.slotIndex].x,
-        y: template[slot.slotIndex].y,
-        strengths: [...new Set(slot.strengths)],
-        notes: slot.notes || null,
-      })),
+      slots,
     });
     if (!formationId) return { status: "error", message: "Formação não encontrada." };
     revalidatePath(`/clubs/${input.clubId}/formations`, "layout");

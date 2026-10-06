@@ -19,6 +19,10 @@ interface FormationPlayerProps {
   highlighted?: boolean;
   /** Torna o marcador um link (ex.: perfil do jogador). */
   href?: string;
+  /** Eventos extras do botão (arrastar no montador). Exige `onSelect`. */
+  buttonProps?: Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onClick" | "style" | "className" | "type">;
+  /** Classe extra do marcador (ex.: cursor de arrastar). */
+  className?: string;
 }
 
 const clamp = (value: number) => Math.min(100, Math.max(0, value));
@@ -34,6 +38,8 @@ export function FormationPlayer({
   selected,
   highlighted,
   href,
+  buttonProps,
+  className: extraClassName,
 }: FormationPlayerProps) {
   const content = (
     <>
@@ -66,8 +72,10 @@ export function FormationPlayer({
     </>
   );
 
-  const className =
-    "absolute flex w-[4.75rem] -translate-x-1/2 translate-y-1/2 flex-col items-center gap-0.5 sm:w-20";
+  const className = cn(
+    "absolute flex w-[4.75rem] -translate-x-1/2 translate-y-1/2 flex-col items-center gap-0.5 sm:w-20",
+    extraClassName,
+  );
   const style = { left: `${clamp(x)}%`, bottom: `${clamp(y)}%` };
 
   if (href) {
@@ -88,6 +96,7 @@ export function FormationPlayer({
 
   return (
     <button
+      {...buttonProps}
       type="button"
       onClick={onSelect}
       aria-label={`${position}: ${name ?? "IA"}${detail ? `, ${detail}` : ""}. Editar vaga`}

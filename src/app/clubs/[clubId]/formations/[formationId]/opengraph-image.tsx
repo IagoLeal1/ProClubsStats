@@ -58,7 +58,7 @@ export default async function Image({ params }: { params: Promise<{ clubId: stri
             ) : null}
             {captain?.name ? <Fact label="Capitão" value={captain.name} /> : null}
             <div style={{ display: "flex", fontSize: 20, color: OG_COLORS.muted, fontFamily: OG_FONTS.body, marginTop: 6 }}>
-              {`${summary.humans} escalados + ${view.cards.length - summary.humans} da IA`}
+              {`${summary.humans} ${summary.humans === 1 ? "escalado" : "escalados"} + ${view.cards.length - summary.humans} da IA`}
             </div>
           </div>
           <OgPitch

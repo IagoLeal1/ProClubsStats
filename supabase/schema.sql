@@ -238,7 +238,7 @@ create table if not exists public.formations (
   id              uuid primary key default gen_random_uuid(),
   club_id         uuid        not null references public.clubs (id) on delete cascade,
   name            text        not null check (char_length(name) between 1 and 60),
-  formation_type  text        not null check (formation_type ~ '^[1-9](-[1-9]){2,4}$'),  -- ex.: 4-3-3, 4-2-3-1
+  formation_type  text        not null check (char_length(formation_type) between 1 and 40),  -- ex.: 4-3-3, 4-3-3 (ofensivo), 3-4-2-1 personalizado
   -- Capitão e cobradores: apontam para o jogador (acompanham trocas de esquema).
   captain_id          uuid references public.players (id) on delete set null,
   penalty_taker_id    uuid references public.players (id) on delete set null,

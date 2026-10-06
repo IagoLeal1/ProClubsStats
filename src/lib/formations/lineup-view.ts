@@ -5,7 +5,7 @@ import { FORMATION_ROLES, type Formation } from "@/types/formation";
 import type { Player, PositionGroup } from "@/types/player";
 
 import { findArchetype, type Archetype } from "./archetypes";
-import { FORMATION_TEMPLATES, isFormationType } from "./templates";
+import { positionGroup } from "./templates";
 
 export type RoleInfo = (typeof FORMATION_ROLES)[number];
 
@@ -65,11 +65,10 @@ export function buildLineupView(
   links: AssistLink[],
 ): LineupView {
   const players = new Map(squad.map((player) => [player.id, player] as const));
-  const template = isFormationType(formation.formationType) ? FORMATION_TEMPLATES[formation.formationType] : null;
 
   const cards: LineupCard[] = formation.slots.map((slot) => {
     const player = slot.playerId ? players.get(slot.playerId) : undefined;
-    const group = template?.[slot.slotIndex]?.group ?? null;
+    const group = positionGroup(slot.position);
     return {
       slotIndex: slot.slotIndex,
       position: slot.position,

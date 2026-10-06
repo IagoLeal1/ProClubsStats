@@ -13,7 +13,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { ARCHETYPES, findArchetype } from "@/lib/formations/archetypes";
 import { ATTRIBUTE_GROUPS, MAX_STRENGTHS } from "@/lib/formations/attributes";
 import { formatPositionGroupPlace, formatPositionGroupShort, formatRating } from "@/lib/format";
-import type { SlotTemplate } from "@/lib/formations/templates";
+import {
+  LINE_SECTORS,
+  POSITION_IDS,
+  POSITIONS,
+  type PositionId,
+  type SlotTemplate,
+} from "@/lib/formations/templates";
 import { MIN_POSITION_GAMES, type PositionRatings } from "@/lib/stats/positions";
 import { cn } from "@/lib/utils";
 import type { PositionGroup } from "@/types/player";
@@ -28,6 +34,12 @@ export interface EditorMember {
 
 export interface DraftSlot {
   slotIndex: number;
+  /** Sigla da vaga; muda ao arrastar a carta ou pela escolha manual. */
+  position: PositionId;
+  /** 0–100, esquerda → direita. */
+  x: number;
+  /** 0–100, próprio gol → gol adversário. */
+  y: number;
   playerId: string | null;
   archetype: string | null;
   strengths: string[];
@@ -40,6 +52,15 @@ const GROUP_LABELS: Record<PositionGroup, string> = {
   midfielder: "meio-campistas",
   forward: "atacantes",
 };
+
+const SECTOR_NAMES: Record<PositionGroup, string> = {
+  goalkeeper: "Gol",
+  defender: "Defesa",
+  midfielder: "Meio-campo",
+  forward: "Ataque",
+};
+
+const isPositionId = (value: string): value is PositionId => (POSITION_IDS as string[]).includes(value);
 
 const fieldClass =
   "h-11 w-full rounded-sm border bg-background px-3 text-[15px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -158,6 +179,32 @@ export function SlotDialog({
               </div>
             )}
           </div>
+
+          {slot.slotIndex !== 0 && (
+            <label className="block space-y-1.5">
+              <span className="kicker text-muted-foreground">Posição</span>
+              <select
+                className={fieldClass}
+                value={slot.position}
+                onChange={(event) => {
+                  if (isPositionId(event.target.value)) onChange({ position: event.target.value });
+                }}
+              >
+                {LINE_SECTORS.map((sector) => (
+                  <optgroup key={sector} label={SECTOR_NAMES[sector]}>
+                    {POSITIONS.filter((position) => position.group === sector).map((position) => (
+                      <option key={position.id} value={position.id}>
+                        {position.id} · {position.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <span className="block text-xs text-muted-foreground">
+                Arrastar a carta no campo também ajusta a posição pela região.
+              </span>
+            </label>
+          )}
 
           <div className="space-y-1.5">
             <label className="block space-y-1.5">

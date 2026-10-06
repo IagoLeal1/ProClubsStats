@@ -202,9 +202,13 @@ região, semântica de `winnerByDnf`.
 
 ## Montador de formação
 
-`/clubs/[clubId]/formations` — escolha o esquema (4-3-3, 4-2-3-1, 4-4-2, 4-1-2-1-2,
-4-3-2-1, 3-5-2, 3-4-3, 5-3-2), clique em cada posição e defina jogador (ou IA), arquétipo
-do FC 27, até 6 pontos fortes (atributos como Curva e Passe curto) e uma observação. Ao
+`/clubs/[clubId]/formations` — escolha um dos 27 esquemas prontos (linha de 4, de 3 e de 5,
+com variações como "4-3-3 (ofensivo)" e "4-1-2-1-2 (aberto)") ou monte o seu: a prancheta deixa
+**arrastar cada carta** (ou mover com as setas do teclado) — a sigla acompanha a região do campo
+— e **subir ou descer a linha inteira** (defesa, meio, ataque) pelas alças ao lado. Mexeu, vira
+"personalizado" (ex.: "3-5-2 personalizado") e dá para voltar ao esquema de partida. Clique em
+cada posição e defina jogador (ou IA), a sigla, o arquétipo do FC 27, até 6 pontos fortes
+(atributos como Curva e Passe curto) e uma observação. Ao
 escolher o jogador, o montador mostra a nota de cada um naquele setor e sugere quem rende mais.
 Também dá para definir capitão e cobradores de pênalti, falta e escanteio.
 
@@ -216,10 +220,12 @@ escalados, ficha do time, bola parada e o plano de jogo de cada vaga. A edição
 - Arquétipos, atributos e esquemas são dados em [`src/lib/formations/`](src/lib/formations/) —
   se a EA mudar algo num patch, só esses arquivos mudam.
 - Trocar o esquema remapeia as vagas por setor e proximidade (o atacante continua atacante).
-- Posição e coordenadas de cada vaga vêm do esquema no servidor, nunca do navegador.
-- Bancos criados antes desta versão: rode
-  [`supabase/migrations/20261005_formation_slots.sql`](supabase/migrations/20261005_formation_slots.sql)
-  e [`supabase/migrations/20261006_formation_roles.sql`](supabase/migrations/20261006_formation_roles.sql).
+- O servidor valida sigla e coordenadas de cada vaga (dentro do campo, goleiro fixo no gol) e
+  calcula o nome do esquema a partir delas.
+- Bancos criados antes desta versão: rode, nesta ordem,
+  [`20261005_formation_slots.sql`](supabase/migrations/20261005_formation_slots.sql),
+  [`20261006_formation_roles.sql`](supabase/migrations/20261006_formation_roles.sql) e
+  [`20261006_formation_free_layout.sql`](supabase/migrations/20261006_formation_free_layout.sql).
 
 > Sem login nesta versão: qualquer pessoa com o link pode editar as formações.
 
