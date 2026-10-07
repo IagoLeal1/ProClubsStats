@@ -1,4 +1,4 @@
-import type { ClubPlayerMatchStat, Match } from "@/types/match";
+import type { ClubPlayerMatchStat, Match, TeamMatchStats } from "@/types/match";
 
 /**
  * Uma "noite" (sessão de jogo): partidas seguidas com no máximo este intervalo
@@ -91,6 +91,11 @@ export interface SessionPlayerLine {
   assists: number;
   mvps: number;
   averageRating: number | null;
+  shots: number;
+  passes: number;
+  passesCompleted: number;
+  tackles: number;
+  tackleAttempts: number;
 }
 
 export interface SessionSummary {
@@ -127,11 +132,21 @@ export function summarizeSession(session: GameSession, stats: ClubPlayerMatchSta
       assists: 0,
       mvps: 0,
       averageRating: null,
+      shots: 0,
+      passes: 0,
+      passesCompleted: 0,
+      tackles: 0,
+      tackleAttempts: 0,
       ratings: [],
     };
     line.games++;
     line.goals += stat.stats.goals;
     line.assists += stat.stats.assists;
+    line.shots += stat.stats.shots;
+    line.passes += stat.stats.passes;
+    line.passesCompleted += stat.stats.passesCompleted;
+    line.tackles += stat.stats.tackles;
+    line.tackleAttempts += stat.stats.tackleAttempts;
     if (stat.stats.manOfTheMatch) line.mvps++;
     if (stat.stats.rating !== null) line.ratings.push(stat.stats.rating);
     lines.set(stat.playerId, line);
@@ -159,5 +174,67 @@ export function summarizeSession(session: GameSession, stats: ClubPlayerMatchSta
     ),
     bestRating: pickTop(players, byRating, regular),
     worstRating: pickTop(players, (a, b) => byRating(b, a), regular),
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Números de equipe da noite
+// -----------------------------------------------------------------------------
+
+/** % de acerto (0–100), ou null sem tentativas. */
+export const rate = (made: number, attempts: number) => (attempts > 0 ? (made / attempts) * 100 : null);
+
+const EMPTY_TEAM_STATS: TeamMatchStats = {
+  goals: 0,
+  shots: 0,
+  passes: 0,
+  passesCompleted: 0,
+  tackles: 0,
+  tackleAttempts: 0,
+  saves: 0,
+  redCards: 0,
+};
+
+/** Soma as estatísticas de equipe de várias partidas. */
+export function sumTeamStats(list: TeamMatchStats[]): TeamMatchStats {
+  return list.reduce(
+    (total, stats) => ({
+      goals: total.goals + stats.goals,
+      shots: total.shots + stats.shots,
+      passes: total.passes + stats.passes,
+      passesCompleted: total.passesCompleted + stats.passesCompleted,
+      tackles: total.tackles + stats.tackles,
+      tackleAttempts: total.tackleAttempts + stats.tackleAttempts,
+      saves: total.saves + stats.saves,
+      redCards: total.redCards + stats.redCards,
+    }),
+    EMPTY_TEAM_STATS,
+  );
+}
+
+export interface SessionTeamStats {
+  club: TeamMatchStats;
+  opponent: TeamMatchStats;
+  /** Partidas da noite que têm os números de equipe dos dois lados. */
+  matches: number;
+}
+
+/**
+ * Números de equipe da noite (clube × adversários). A EA só registra
+ * finalizações, passes e desarmes dos jogadores humanos; os gols são do placar.
+ */
+export function sessionTeamStats(
+  session: GameSession,
+  teamStats: Map<string, { club: TeamMatchStats | null; opponent: TeamMatchStats | null }>,
+): SessionTeamStats | null {
+  const pairs = session.matches.flatMap((match) => {
+    const pair = teamStats.get(match.id);
+    return pair?.club && pair.opponent ? [{ club: pair.club, opponent: pair.opponent }] : [];
+  });
+  if (pairs.length === 0) return null;
+  return {
+    club: sumTeamStats(pairs.map((pair) => pair.club)),
+    opponent: sumTeamStats(pairs.map((pair) => pair.opponent)),
+    matches: pairs.length,
   };
 }

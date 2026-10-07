@@ -157,6 +157,27 @@ export async function listPlayerMatchHistory(playerId: string): Promise<PlayerMa
     .sort((a, b) => b.match.playedAt.localeCompare(a.match.playedAt));
 }
 
+export interface MatchTeamStatsPair {
+  club: TeamMatchStats | null;
+  opponent: TeamMatchStats | null;
+}
+
+/** Estatísticas de equipe (clube e adversário) de várias partidas, por id da partida. */
+export async function listTeamStats(matchIds: string[]): Promise<Map<string, MatchTeamStatsPair>> {
+  const result = new Map<string, MatchTeamStatsPair>();
+  if (matchIds.length === 0) return result;
+  const rows = unwrap(
+    await getDbReader().from("match_team_stats").select().in("match_id", matchIds),
+    "listar estatísticas de equipe",
+  );
+  for (const row of rows) {
+    const pair = result.get(row.match_id) ?? { club: null, opponent: null };
+    pair[row.side === "club" ? "club" : "opponent"] = mapTeamStatsRow(row);
+    result.set(row.match_id, pair);
+  }
+  return result;
+}
+
 /** Todas as partidas salvas do clube, da mais antiga para a mais recente. */
 export async function listAllClubMatches(clubId: string): Promise<Match[]> {
   const rows = await fetchAllPages(

@@ -3,8 +3,8 @@ import "server-only";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
-import { listAllClubMatches, listClubPlayerMatchStats } from "@/lib/db/matches.repository";
-import { groupSessions, summarizeSession } from "@/lib/stats/sessions";
+import { listAllClubMatches, listClubPlayerMatchStats, listTeamStats } from "@/lib/db/matches.repository";
+import { groupSessions, sessionTeamStats, summarizeSession } from "@/lib/stats/sessions";
 
 import { isValidId, loadClub } from "../../load-club";
 
@@ -20,5 +20,11 @@ export const loadSession = cache(async (clubId: string, sessionId: string) => {
   const session = groupSessions(matches).find((candidate) => candidate.id === sessionId);
   if (!session) notFound();
 
-  return { club, session, summary: summarizeSession(session, stats) };
+  const teamStats = await listTeamStats(session.matches.map((match) => match.id));
+  return {
+    club,
+    session,
+    summary: summarizeSession(session, stats),
+    teamStats: sessionTeamStats(session, teamStats),
+  };
 });

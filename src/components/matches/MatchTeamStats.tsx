@@ -1,4 +1,5 @@
 import { formatInteger, formatPercent } from "@/lib/format";
+import { rate } from "@/lib/stats/sessions";
 import { cn } from "@/lib/utils";
 import type { TeamMatchStats } from "@/types/match";
 
@@ -9,12 +10,20 @@ interface StatRow {
   format?: (value: number | null) => string;
 }
 
-const passAccuracy = (stats: TeamMatchStats) =>
-  stats.passes > 0 ? (stats.passesCompleted / stats.passes) * 100 : null;
+const passAccuracy = (stats: TeamMatchStats) => rate(stats.passesCompleted, stats.passes);
+/** Gols do placar sobre finalizações (a EA só conta as finalizações dos jogadores humanos). */
+const conversion = (stats: TeamMatchStats) => rate(stats.goals, stats.shots);
 
 function buildRows(club: TeamMatchStats, opponent: TeamMatchStats): StatRow[] {
   return [
-    { label: "Chutes", club: club.shots, opponent: opponent.shots },
+    { label: "Gols", club: club.goals, opponent: opponent.goals },
+    { label: "Finalizações", club: club.shots, opponent: opponent.shots },
+    {
+      label: "Conversão",
+      club: conversion(club),
+      opponent: conversion(opponent),
+      format: (value) => formatPercent(value),
+    },
     { label: "Passes", club: club.passes, opponent: opponent.passes },
     { label: "Passes certos", club: club.passesCompleted, opponent: opponent.passesCompleted },
     {
@@ -45,10 +54,23 @@ function ComparisonBar({ club, opponent }: { club: number; opponent: number }) {
   );
 }
 
+interface MatchTeamStatsProps {
+  club: TeamMatchStats;
+  opponent: TeamMatchStats;
+  /** Nomes no topo das colunas (ex.: na soma de uma noite). */
+  labels?: { club: string; opponent: string };
+}
+
 /** Comparação lado a lado das estatísticas das duas equipes. */
-export function MatchTeamStats({ club, opponent }: { club: TeamMatchStats; opponent: TeamMatchStats }) {
+export function MatchTeamStats({ club, opponent, labels }: MatchTeamStatsProps) {
   return (
     <div className="space-y-4 border bg-card p-4 sm:p-6">
+      {labels && (
+        <div className="flex items-center justify-between gap-3 border-b pb-3">
+          <span className="kicker text-primary">{labels.club}</span>
+          <span className="kicker text-muted-foreground">{labels.opponent}</span>
+        </div>
+      )}
       {buildRows(club, opponent).map((row) => {
         const format = row.format ?? formatInteger;
         const clubValue = row.club ?? 0;

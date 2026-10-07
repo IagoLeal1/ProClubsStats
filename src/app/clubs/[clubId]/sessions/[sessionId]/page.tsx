@@ -7,6 +7,7 @@ import { ShareButton } from "@/components/layout/ShareButton";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { MatchCard, MatchList } from "@/components/matches/MatchCard";
 import { MatchResult } from "@/components/matches/MatchResult";
+import { MatchTeamStats } from "@/components/matches/MatchTeamStats";
 import { RatingBadge } from "@/components/players/RatingBadge";
 import {
   Table,
@@ -16,8 +17,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatPercent, formatRating, formatSigned, formatTime, formatWeekdayDate } from "@/lib/format";
-import type { GameSession, SessionPlayerLine, SessionSummary } from "@/lib/stats/sessions";
+import {
+  formatPercent,
+  formatRating,
+  formatSigned,
+  formatTime,
+  formatWeekdayDate,
+} from "@/lib/format";
+import {
+  rate,
+  type GameSession,
+  type SessionPlayerLine,
+  type SessionSummary,
+  type SessionTeamStats,
+} from "@/lib/stats/sessions";
 import { weekIdOf } from "@/lib/stats/weeks";
 import { cn } from "@/lib/utils";
 
@@ -25,18 +38,33 @@ import { loadSession } from "./load-session";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
+/** Mínimos para os destaques de precisão não premiarem quem quase não tocou na bola. */
+const MIN_SHOTS_FOR_CONVERSION = 3;
+const MIN_PASSES_FOR_ACCURACY = 30;
+
 function recordLabel({ record }: GameSession) {
   return `${record.wins}V ${record.draws}E ${record.losses}D`;
 }
 
 /** Texto que acompanha o link ao compartilhar no WhatsApp. */
-function shareText(clubName: string, session: GameSession, summary: SessionSummary): string {
+function shareText(
+  clubName: string,
+  session: GameSession,
+  summary: SessionSummary,
+  teamStats: SessionTeamStats | null,
+): string {
   const lines = [
     `⚽ ${clubName} — ${formatWeekdayDate(session.startedAt)}`,
     `${recordLabel(session)} · ${session.record.goalsFor} gols pró, ${session.record.goalsAgainst} contra`,
   ];
   if (summary.mvp) lines.push(`MVP da noite: ${summary.mvp.playerName}`);
   if (summary.topScorer) lines.push(`Artilheiro: ${summary.topScorer.playerName} (${summary.topScorer.goals})`);
+  if (teamStats) {
+    const { club } = teamStats;
+    lines.push(
+      `Finalizações: ${club.shots} (${formatPercent(rate(club.goals, club.shots))} de conversão) · Passes: ${formatPercent(rate(club.passesCompleted, club.passes))} certos`,
+    );
+  }
   return lines.join("\n");
 }
 
@@ -90,6 +118,28 @@ function buildHighlights(
     detail: `${record.goalsFor} feitos, ${record.goalsAgainst} sofridos`,
     tone: "muted",
   });
+  const sharpest = [...summary.players]
+    .filter((line) => line.shots >= MIN_SHOTS_FOR_CONVERSION && line.goals > 0)
+    .sort((a, b) => b.goals / b.shots - a.goals / a.shots || b.goals - a.goals)[0];
+  if (sharpest) {
+    highlights.push({
+      label: "Pé calibrado",
+      value: sharpest.playerName,
+      detail: `${plural(sharpest.goals, "gol", "gols")} em ${sharpest.shots} finalizações (${formatPercent(rate(sharpest.goals, sharpest.shots))})`,
+      href: profile(sharpest),
+    });
+  }
+  const maestro = [...summary.players]
+    .filter((line) => line.passes >= MIN_PASSES_FOR_ACCURACY)
+    .sort((a, b) => b.passesCompleted / b.passes - a.passesCompleted / a.passes)[0];
+  if (maestro) {
+    highlights.push({
+      label: "Maestro",
+      value: maestro.playerName,
+      detail: `${formatPercent(rate(maestro.passesCompleted, maestro.passes))} de passes certos (${maestro.passesCompleted}/${maestro.passes})`,
+      href: profile(maestro),
+    });
+  }
   if (summary.worstRating && summary.worstRating.playerId !== summary.bestRating?.playerId) {
     highlights.push({
       label: "Nota mais baixa",
@@ -104,9 +154,21 @@ function buildHighlights(
 
 const DETAIL_TONES = { primary: "text-primary", muted: "text-muted-foreground", loss: "text-loss" } as const;
 
+/** Percentual grande + "certos/tentados" embaixo. */
+function RateCell({ made, attempts }: { made: number; attempts: number }) {
+  return (
+    <span className="inline-flex flex-col items-end leading-tight">
+      <span className="font-display text-base font-bold tabular">{formatPercent(rate(made, attempts))}</span>
+      <span className="text-xs text-muted-foreground tabular">
+        {made}/{attempts}
+      </span>
+    </span>
+  );
+}
+
 export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]/sessions/[sessionId]">) {
   const { clubId, sessionId } = await params;
-  const { club, session, summary } = await loadSession(clubId, sessionId);
+  const { club, session, summary, teamStats } = await loadSession(clubId, sessionId);
   const { record } = session;
   const games = session.matches.length;
   const pointsRate = ((record.wins * 3 + record.draws) / (games * 3)) * 100;
@@ -186,6 +248,20 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
         </div>
       </section>
 
+      {teamStats && (
+        <section className="space-y-3">
+          <SectionHeading
+            title="Números da noite"
+            description="Soma das partidas da noite. Finalizações, passes e desarmes contam só os jogadores (a EA não registra os da IA); gols e conversão usam o placar."
+          />
+          <MatchTeamStats
+            club={teamStats.club}
+            opponent={teamStats.opponent}
+            labels={{ club: club.name, opponent: "Adversários" }}
+          />
+        </section>
+      )}
+
       <section>
         <SectionHeading title="Jogadores da noite" description="Notas médias valem para quem jogou ao menos metade da noite" />
         <div className="border bg-card">
@@ -223,6 +299,51 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
       </section>
 
       <section>
+        <SectionHeading
+          title="Finalização e passe"
+          description="Conversão (gols ÷ finalizações), passes e desarmes certos de cada um; embaixo, certos/tentados"
+        />
+        <div className="border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-4">Jogador</TableHead>
+                <TableHead className="text-right" title="Conversão: gols ÷ finalizações">
+                  Conv.
+                </TableHead>
+                <TableHead className="text-right" title="Passes certos ÷ tentados">
+                  Passe
+                </TableHead>
+                <TableHead className="pr-4 text-right" title="Desarmes certos ÷ tentados">
+                  Des.
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {summary.players.map((line) => (
+                <TableRow key={line.playerId}>
+                  <TableCell className="pl-4 font-semibold">
+                    <Link href={profile(line)} className="hover:text-primary">
+                      {line.playerName}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <RateCell made={line.goals} attempts={line.shots} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <RateCell made={line.passesCompleted} attempts={line.passes} />
+                  </TableCell>
+                  <TableCell className="pr-4 text-right">
+                    <RateCell made={line.tackles} attempts={line.tackleAttempts} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </section>
+
+      <section>
         <SectionHeading title="Jogo a jogo" description="Em ordem, da primeira à última" />
         <MatchList>
           {session.matches.map((match) => (
@@ -233,7 +354,7 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <ShareButton
-          text={shareText(club.name, session, summary)}
+          text={shareText(club.name, session, summary, teamStats)}
           title={`${club.name} · resumo da noite`}
           label="Mandar no grupo"
           className="w-full sm:w-auto"
