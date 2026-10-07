@@ -207,11 +207,11 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
         </div>
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+      <section className="space-y-3">
         {summary.mvp && (
           <Link
             href={profile(summary.mvp)}
-            className="relative flex flex-col justify-end gap-1 overflow-hidden bg-primary p-6 text-primary-foreground transition-opacity hover:opacity-95"
+            className="relative flex flex-col gap-1 overflow-hidden bg-primary p-6 text-primary-foreground transition-opacity hover:opacity-95 sm:px-8"
           >
             <StarIcon
               aria-hidden
@@ -225,7 +225,7 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
             </span>
           </Link>
         )}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {highlights.map((highlight) => {
             const content = (
               <>

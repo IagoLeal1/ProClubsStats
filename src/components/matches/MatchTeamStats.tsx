@@ -8,6 +8,8 @@ interface StatRow {
   club: number | null;
   opponent: number | null;
   format?: (value: number | null) => string;
+  /** Quanto menos, melhor (ex.: passes errados, cartões): o destaque vai para o menor. */
+  lowerIsBetter?: boolean;
 }
 
 const passAccuracy = (stats: TeamMatchStats) => rate(stats.passesCompleted, stats.passes);
@@ -27,6 +29,12 @@ function buildRows(club: TeamMatchStats, opponent: TeamMatchStats): StatRow[] {
     { label: "Passes", club: club.passes, opponent: opponent.passes },
     { label: "Passes certos", club: club.passesCompleted, opponent: opponent.passesCompleted },
     {
+      label: "Passes errados",
+      club: club.passes - club.passesCompleted,
+      opponent: opponent.passes - opponent.passesCompleted,
+      lowerIsBetter: true,
+    },
+    {
       label: "Precisão de passe",
       club: passAccuracy(club),
       opponent: passAccuracy(opponent),
@@ -35,7 +43,7 @@ function buildRows(club: TeamMatchStats, opponent: TeamMatchStats): StatRow[] {
     { label: "Desarmes", club: club.tackles, opponent: opponent.tackles },
     { label: "Tentativas de desarme", club: club.tackleAttempts, opponent: opponent.tackleAttempts },
     { label: "Defesas", club: club.saves, opponent: opponent.saves },
-    { label: "Cartões vermelhos", club: club.redCards, opponent: opponent.redCards },
+    { label: "Cartões vermelhos", club: club.redCards, opponent: opponent.redCards, lowerIsBetter: true },
   ];
 }
 
@@ -75,14 +83,16 @@ export function MatchTeamStats({ club, opponent, labels }: MatchTeamStatsProps) 
         const format = row.format ?? formatInteger;
         const clubValue = row.club ?? 0;
         const opponentValue = row.opponent ?? 0;
+        // O clube fica em verde quando leva vantagem; o adversário, apagado quando não leva.
+        const clubAhead = row.lowerIsBetter ? clubValue < opponentValue : clubValue > opponentValue;
         return (
           <div key={row.label} className="space-y-1.5">
             <div className="flex items-center justify-between gap-3">
-              <span className={cn("figure text-2xl", clubValue > opponentValue && "text-primary")}>
+              <span className={cn("figure text-2xl", clubAhead && "text-primary")}>
                 {format(row.club)}
               </span>
               <span className="kicker text-center text-muted-foreground">{row.label}</span>
-              <span className={cn("figure text-2xl", opponentValue <= clubValue && "text-muted-foreground")}>
+              <span className={cn("figure text-2xl", (clubAhead || clubValue === opponentValue) && "text-muted-foreground")}>
                 {format(row.opponent)}
               </span>
             </div>
