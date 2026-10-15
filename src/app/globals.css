@@ -136,3 +136,24 @@
     display: none;
   }
 }
+
+/* Mapa da arquitetura: tracejado que anda na linha ativa e barra de tempo do passo. */
+@theme {
+  --animate-flow: flow 0.9s linear infinite;
+  --animate-step: step-progress 5s linear forwards;
+
+  @keyframes flow {
+    to {
+      stroke-dashoffset: -28;
+    }
+  }
+
+  @keyframes step-progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+}

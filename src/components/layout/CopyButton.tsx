@@ -30,20 +30,23 @@ function legacyCopy(text: string): boolean {
   }
 }
 
+/** Copia para a área de transferência; false se o navegador não deixar. */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return legacyCopy(text);
+  }
+}
+
 /** Copia um texto (ex.: código da tática) para a área de transferência. */
 export function CopyButton({ text, label = "Copiar", className }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
-    let ok: boolean;
-    try {
-      await navigator.clipboard.writeText(text);
-      ok = true;
-    } catch {
-      ok = legacyCopy(text);
-    }
     // Se nada funcionar, o texto continua na tela (selecionável) para copiar à mão.
-    if (!ok) return;
+    if (!(await copyText(text))) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

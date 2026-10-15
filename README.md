@@ -79,7 +79,7 @@ Localmente (rede residencial) a EA responde normalmente: o site sincroniza diret
 
 ## Arquitetura
 
-Visão geral com diagramas em [`/arquitetura`](https://pro-clubs-stats-two.vercel.app/arquitetura) (arquivo estático [`public/arquitetura.html`](public/arquitetura.html); atualize junto quando a arquitetura mudar).
+Visão geral interativa em [`/arquitetura`](https://pro-clubs-stats-two.vercel.app/arquitetura) (textos em [`src/components/architecture/content.ts`](src/components/architecture/content.ts); atualize junto quando a arquitetura mudar).
 
 ```
 src/

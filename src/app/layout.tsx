@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
+import Link from "next/link";
 
 import { Header } from "@/components/layout/Header";
 import { getSiteUrl } from "@/lib/site";
@@ -43,7 +44,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Header />
         <main className="flex-1 pb-16">{children}</main>
         <footer className="border-t px-4 py-6 text-center text-xs text-muted-foreground max-md:pb-24">
-          FC Clubs Stats · projeto independente, sem vínculo com a Electronic Arts
+          FC Clubs Stats · projeto independente, sem vínculo com a Electronic Arts ·{" "}
+          <Link href="/arquitetura" className="underline-offset-4 hover:text-foreground hover:underline">
+            Como funciona
+          </Link>
         </footer>
       </body>
     </html>
