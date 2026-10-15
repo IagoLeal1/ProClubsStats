@@ -5,12 +5,14 @@ import { z } from "zod";
 
 import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
+import { OverallRisers } from "@/components/players/OverallRisers";
 import { PLAYER_STAT_COLUMNS } from "@/components/players/player-columns";
 import { PlayerStatsCard } from "@/components/players/PlayerStatsCard";
 import { defaultDirection, PlayerTable, sortHref } from "@/components/players/PlayerTable";
 import { listAllClubMatches, listClubPlayerMatchStats } from "@/lib/db/matches.repository";
-import { listPlayersByClub } from "@/lib/db/players.repository";
+import { listClubPlayerProgress, listPlayersByClub } from "@/lib/db/players.repository";
 import { computeSquadForm } from "@/lib/stats/form";
+import { overallTrends } from "@/lib/stats/progress";
 import { PLAYER_SORT_KEYS, sortPlayers } from "@/lib/stats/player-stats";
 import { cn } from "@/lib/utils";
 
@@ -34,10 +36,11 @@ export default async function ClubPlayersPage({
   const direction = dir ?? defaultDirection(sort);
   const basePath = `/clubs/${club.id}/players`;
 
-  const [squad, matches, stats] = await Promise.all([
+  const [squad, matches, stats, progress] = await Promise.all([
     listPlayersByClub(club.id),
     listAllClubMatches(club.id),
     listClubPlayerMatchStats(club.id),
+    listClubPlayerProgress(club.id),
   ]);
   // Ex-membros sem nenhum jogo (criados só para vincular partidas) poluiriam a lista.
   const players = sortPlayers(
@@ -63,6 +66,8 @@ export default async function ClubPlayersPage({
         title="Jogadores"
         description={`${players.length} jogadores · estatísticas da temporada no clube (EA) · seta = fase nos últimos jogos`}
       />
+
+      <OverallRisers clubId={club.id} players={players} trends={overallTrends(progress)} />
 
       {/* Mobile: cards + atalhos de ordenação */}
       <div className="space-y-3 md:hidden">

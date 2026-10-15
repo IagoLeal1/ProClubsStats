@@ -30,6 +30,15 @@ function mapClubRow(row: TableRow<"clubs">): Club {
       goalsFor: row.goals_for,
       goalsAgainst: row.goals_against,
     },
+    division:
+      row.current_division === null && row.promotions === null
+        ? null
+        : {
+            current: row.current_division,
+            best: row.best_division,
+            promotions: row.promotions,
+            relegations: row.relegations,
+          },
     lastSyncedAt: row.last_synced_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -56,6 +65,13 @@ export async function upsertClub(snapshot: ClubSnapshot, syncedAt: string): Prom
           goals_for: snapshot.record.goalsFor,
           goals_against: snapshot.record.goalsAgainst,
           last_synced_at: syncedAt,
+          // Sem divisão desta vez (consulta falhou): não apaga a que já está salva.
+          ...(snapshot.division && {
+            current_division: snapshot.division.current,
+            best_division: snapshot.division.best,
+            promotions: snapshot.division.promotions,
+            relegations: snapshot.division.relegations,
+          }),
         },
         { onConflict: "ea_club_id,platform" },
       )
@@ -160,6 +176,7 @@ export async function recordClubProgress(club: Club): Promise<void> {
           losses: club.record.losses,
           goals_for: club.record.goalsFor,
           goals_against: club.record.goalsAgainst,
+          current_division: club.division?.current ?? null,
         },
         { onConflict: "club_id,games_played", ignoreDuplicates: true },
       ),
@@ -187,5 +204,6 @@ export async function listClubProgress(clubId: string): Promise<ClubProgressPoin
       goalsFor: row.goals_for,
       goalsAgainst: row.goals_against,
     },
+    division: row.current_division,
   }));
 }

@@ -130,8 +130,8 @@ pesquisa → resultado da EA → "Ver estatísticas" (Server Action)
 
 ### Banco
 
-`clubs`, `players`, `matches`, `match_team_stats`, `player_match_stats`, `formations`,
-`formation_players` — ver [`supabase/schema.sql`](supabase/schema.sql).
+`clubs`, `players`, `matches`, `match_team_stats`, `player_match_stats`, `club_progress`,
+`player_progress`, `formations`, `formation_players` — ver [`supabase/schema.sql`](supabase/schema.sql).
 
 Decisões em relação ao modelo inicial:
 
@@ -199,6 +199,13 @@ região, semântica de `winnerByDnf`.
   OFL).
 - **Evolução do skill rating**: a EA só informa o valor atual; cada jogo de liga novo vira um
   ponto em `club_progress`.
+- **Divisão e acessos**: divisão atual e melhor (só a busca do ranking geral da EA informa),
+  acessos e quedas, no topo do clube e num card do painel; cada jogo de liga registra a divisão
+  em `club_progress` para mostrar as subidas e quedas.
+- **Evolução do Pro**: o OVR de cada membro é registrado em `player_progress` a cada
+  sincronização (por nº de jogos), com gráfico no perfil e "Quem mais subiu de OVR" na lista de
+  jogadores. Bancos antigos: rode
+  [`20261015_division_and_player_progress.sql`](supabase/migrations/20261015_division_and_player_progress.sql).
 
 ## Montador de formação
 

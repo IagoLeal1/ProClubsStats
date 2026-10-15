@@ -4,7 +4,7 @@
  *
  * O restante da aplicação recebe somente modelos internos (`src/types/`).
  */
-export { searchClubs, fetchClubSnapshot } from "./clubs";
+export { searchClubs, fetchClubSnapshot, fetchClubDivision } from "./clubs";
 export { fetchClubMembers } from "./players";
 export { fetchAllRecentMatches, fetchRecentMatches } from "./matches";
 export { EAError, isEAError, isEANotFound, type EAErrorKind } from "./errors";

@@ -2,6 +2,7 @@ import { formatInteger, formatRelativeTime } from "@/lib/format";
 import { PLATFORM_LABELS, type Club } from "@/types/club";
 
 import { ClubCrest } from "./ClubCrest";
+import { divisionLabel } from "./DivisionCard";
 import { SyncClubButton } from "./SyncClubButton";
 
 interface ClubHeaderProps {
@@ -32,12 +33,20 @@ export function ClubHeader({ club, autoSyncing = false }: ClubHeaderProps) {
       </div>
 
       <div className="flex flex-col gap-2.5 max-sm:w-full sm:items-end">
-        {club.skillRating !== null && (
-          <div className="flex items-baseline gap-3 sm:flex-col sm:items-end sm:gap-1">
-            <span className="kicker text-muted-foreground">Skill rating</span>
-            <span className="figure text-5xl text-primary sm:text-7xl">{formatInteger(club.skillRating)}</span>
-          </div>
-        )}
+        <div className="flex items-end gap-6 sm:gap-8">
+          {club.division?.current != null && (
+            <div className="flex flex-col gap-1 sm:items-end">
+              <span className="kicker text-muted-foreground">Divisão</span>
+              <span className="figure text-5xl sm:text-7xl">{divisionLabel(club.division.current)}</span>
+            </div>
+          )}
+          {club.skillRating !== null && (
+            <div className="flex flex-col gap-1 sm:items-end">
+              <span className="kicker text-muted-foreground">Skill rating</span>
+              <span className="figure text-5xl text-primary sm:text-7xl">{formatInteger(club.skillRating)}</span>
+            </div>
+          )}
+        </div>
         <SyncClubButton
           eaClubId={club.eaClubId}
           platform={club.platform}

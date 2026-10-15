@@ -19,6 +19,14 @@ export interface ClubRecord {
   goalsAgainst: number;
 }
 
+/** Divisão no ranking geral da EA (1 = a mais alta). */
+export interface ClubDivision {
+  current: number | null;
+  best: number | null;
+  promotions: number | null;
+  relegations: number | null;
+}
+
 /** Dados de um clube vindos de uma fonte externa (ainda não persistidos). */
 export interface ClubSnapshot {
   eaClubId: number;
@@ -28,6 +36,8 @@ export interface ClubSnapshot {
   regionId: number | null;
   skillRating: number | null;
   record: ClubRecord;
+  /** null quando a divisão não pôde ser consultada agora (o banco mantém a anterior). */
+  division: ClubDivision | null;
 }
 
 /** Clube persistido no nosso banco. */
@@ -61,4 +71,5 @@ export interface ClubProgressPoint {
   capturedAt: string;
   skillRating: number | null;
   record: ClubRecord;
+  division: number | null;
 }

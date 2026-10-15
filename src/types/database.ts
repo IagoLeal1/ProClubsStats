@@ -25,6 +25,10 @@ type ClubRow = Timestamps & {
   goals_for: number;
   goals_against: number;
   last_synced_at: string | null;
+  current_division: number | null;
+  best_division: number | null;
+  promotions: number | null;
+  relegations: number | null;
 };
 
 type PlayerRow = Timestamps & {
@@ -116,6 +120,15 @@ type ClubProgressRow = {
   losses: number;
   goals_for: number;
   goals_against: number;
+  current_division: number | null;
+};
+
+type PlayerProgressRow = {
+  id: string;
+  player_id: string;
+  captured_at: string;
+  overall: number;
+  games_played: number;
 };
 
 type FormationRow = Timestamps & {
@@ -176,6 +189,10 @@ export type Database = {
         | "goals_for"
         | "goals_against"
         | "last_synced_at"
+        | "current_division"
+        | "best_division"
+        | "promotions"
+        | "relegations"
       >;
       players: TableDefinition<
         PlayerRow,
@@ -286,13 +303,26 @@ export type Database = {
       >;
       club_progress: TableDefinition<
         ClubProgressRow,
-        "id" | "captured_at" | "skill_rating",
+        "id" | "captured_at" | "skill_rating" | "current_division",
         [
           {
             foreignKeyName: "club_progress_club_id_fkey";
             columns: ["club_id"];
             isOneToOne: false;
             referencedRelation: "clubs";
+            referencedColumns: ["id"];
+          },
+        ]
+      >;
+      player_progress: TableDefinition<
+        PlayerProgressRow,
+        "id" | "captured_at",
+        [
+          {
+            foreignKeyName: "player_progress_player_id_fkey";
+            columns: ["player_id"];
+            isOneToOne: false;
+            referencedRelation: "players";
             referencedColumns: ["id"];
           },
         ]

@@ -53,6 +53,11 @@ create table if not exists public.clubs (
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now(),
   last_synced_at  timestamptz,
+  -- Divisão no ranking geral da EA (a busca do ranking informa; muda a cada temporada).
+  current_division  smallint check (current_division > 0),
+  best_division     smallint check (best_division > 0),
+  promotions        integer  check (promotions >= 0),
+  relegations       integer  check (relegations >= 0),
   constraint clubs_ea_club_id_platform_key unique (ea_club_id, platform)
 );
 
@@ -221,11 +226,29 @@ create table if not exists public.club_progress (
   losses         integer     not null,
   goals_for      integer     not null,
   goals_against  integer     not null,
+  current_division smallint check (current_division > 0),
   constraint club_progress_club_id_games_played_key unique (club_id, games_played)
 );
 
 create index if not exists club_progress_club_id_captured_at_idx
   on public.club_progress (club_id, captured_at);
+
+-- -----------------------------------------------------------------------------
+-- player_progress
+-- A EA só informa o OVR ATUAL de cada Pro. Guardamos um registro por nº de
+-- jogos do jogador no clube para desenhar a evolução.
+-- -----------------------------------------------------------------------------
+create table if not exists public.player_progress (
+  id            uuid primary key default gen_random_uuid(),
+  player_id     uuid        not null references public.players (id) on delete cascade,
+  captured_at   timestamptz not null default now(),
+  overall       smallint    not null check (overall > 0),
+  games_played  integer     not null check (games_played >= 0),
+  constraint player_progress_player_id_games_played_key unique (player_id, games_played)
+);
+
+create index if not exists player_progress_player_id_captured_at_idx
+  on public.player_progress (player_id, captured_at);
 
 -- -----------------------------------------------------------------------------
 -- formations / formation_players (montador de formação)
@@ -296,7 +319,7 @@ declare
 begin
   foreach t in array array[
     'clubs', 'players', 'matches', 'match_team_stats',
-    'player_match_stats', 'club_progress', 'formations', 'formation_players'
+    'player_match_stats', 'club_progress', 'player_progress', 'formations', 'formation_players'
   ]
   loop
     execute format('alter table public.%I enable row level security', t);

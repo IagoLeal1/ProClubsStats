@@ -78,6 +78,11 @@ export const EALeaderboardEntrySchema = z.object({
   losses: eaNumber,
   goals: eaNumber,
   goalsAgainst: eaNumber,
+  /** Só o ranking informa a divisão atual; /clubs/overallStats não traz. */
+  currentDivision: eaNumber,
+  bestDivision: eaNumber,
+  promotions: eaNumber,
+  relegations: eaNumber,
   clubInfo: EAClubDetailsSchema.nullish(),
 });
 export type EALeaderboardEntry = z.output<typeof EALeaderboardEntrySchema>;

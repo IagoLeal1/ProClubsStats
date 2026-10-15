@@ -5,10 +5,12 @@ import {
   linkEaPlayerIds,
   listPlayerIdentities,
   markPlayersAsFormerMembers,
+  recordPlayerProgress,
   upsertMemberSnapshots,
   type PlayerIdentity,
 } from "@/lib/db/players.repository";
 import { fetchClubMembers } from "@/lib/ea";
+import { logServerError } from "@/lib/errors";
 import type { Club } from "@/types/club";
 
 export interface PlayerSyncResult {
@@ -17,15 +19,22 @@ export interface PlayerSyncResult {
 }
 
 /**
- * Atualiza os membros atuais com as estatísticas da EA. Quem não aparece mais
- * na lista é marcado como ex-membro (nunca apagado).
+ * Atualiza os membros atuais com as estatísticas da EA (e um ponto na evolução
+ * do OVR de cada um). Quem não aparece mais na lista é marcado como ex-membro
+ * (nunca apagado).
  */
 export async function syncClubPlayers(
   club: Club,
   syncedAt: string,
 ): Promise<PlayerSyncResult> {
   const members = await fetchClubMembers(club.eaClubId, club.platform);
-  await upsertMemberSnapshots(club.id, members, syncedAt);
+  const saved = await upsertMemberSnapshots(club.id, members, syncedAt);
+  try {
+    await recordPlayerProgress(saved);
+  } catch (error) {
+    // A evolução do OVR é complementar: não derruba a sincronização.
+    logServerError("sync:player-progress", error);
+  }
 
   // Lista vazia é mais provável ser instabilidade da EA do que um clube sem
   // ninguém: não rebaixa todo o elenco a ex-membro.

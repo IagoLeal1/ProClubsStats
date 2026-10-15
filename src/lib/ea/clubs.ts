@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { ClubSearchResult, ClubSnapshot, Platform } from "@/types/club";
+import type { ClubDivision, ClubSearchResult, ClubSnapshot, Platform } from "@/types/club";
 
 import { getEAClient } from "./client";
 import { EA_ENDPOINTS, EA_PLATFORM_CODES } from "./constants";
@@ -9,6 +9,7 @@ import {
   mapEAClub,
   mapEAClubInfoToSearchResult,
   mapEAClubSearchResult,
+  mapEADivision,
 } from "./mappers";
 import {
   EAClubInfoResponseSchema,
@@ -99,4 +100,23 @@ export async function fetchClubSnapshot(
     fetchClubOverallStats(eaClubId, platform),
   ]);
   return mapEAClub(eaClubId, platform, details, overall);
+}
+
+/**
+ * Divisão do clube. Só a busca do ranking geral informa a divisão atual, e
+ * ela busca por nome: o resultado certo é o que tem o mesmo ID. null se o
+ * clube não aparecer no ranking.
+ */
+export async function fetchClubDivision(
+  eaClubId: number,
+  clubName: string,
+  platform: Platform,
+): Promise<ClubDivision | null> {
+  const entries = await getEAClient().get(
+    EA_ENDPOINTS.leaderboardSearch,
+    { platform: EA_PLATFORM_CODES[platform], clubName },
+    EALeaderboardSearchResponseSchema,
+  );
+  const entry = entries.find((candidate) => (candidate.clubId ?? candidate.clubInfo?.clubId) === eaClubId);
+  return entry ? mapEADivision(entry) : null;
 }

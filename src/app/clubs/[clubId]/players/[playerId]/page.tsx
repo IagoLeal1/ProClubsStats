@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { RESULT_LETTERS } from "@/components/matches/MatchResult";
 import { FormBadge } from "@/components/players/FormBadge";
+import { OverallProgress } from "@/components/players/OverallProgress";
 import { PlayerMatchLog } from "@/components/players/PlayerMatchLog";
 import { PositionSplits } from "@/components/players/PositionSplits";
 import { RatingBadge } from "@/components/players/RatingBadge";
@@ -23,7 +24,7 @@ import {
   listClubPlayerMatchStats,
   listPlayerMatchHistory,
 } from "@/lib/db/matches.repository";
-import { getPlayerById, listPlayersByClub } from "@/lib/db/players.repository";
+import { getPlayerById, listClubPlayerProgress, listPlayersByClub } from "@/lib/db/players.repository";
 import {
   formatDateTime,
   formatInteger,
@@ -48,6 +49,7 @@ import {
 } from "@/lib/stats/player-history";
 import { goalsAndAssists } from "@/lib/stats/player-stats";
 import { splitByPosition } from "@/lib/stats/positions";
+import { overallTrends } from "@/lib/stats/progress";
 import { MIN_SCOUT_GAMES, scoutPlayer } from "@/lib/stats/scouting";
 import { cn } from "@/lib/utils";
 import type { Club } from "@/types/club";
@@ -377,12 +379,14 @@ export default async function PlayerProfilePage({
   const { clubId, playerId } = await params;
   const { club, player } = await loadPlayer(clubId, playerId);
 
-  const [squad, history, clubMatches, clubStats] = await Promise.all([
+  const [squad, history, clubMatches, clubStats, progress] = await Promise.all([
     listPlayersByClub(club.id),
     listPlayerMatchHistory(player.id),
     listAllClubMatches(club.id),
     listClubPlayerMatchStats(club.id),
+    listClubPlayerProgress(club.id),
   ]);
+  const overallTrend = overallTrends(progress).get(player.id);
   const summary = summarizePlayerHistory(history);
   const form = computeForm(
     history.flatMap((entry) => (entry.stats.rating === null ? [] : [entry.stats.rating])),
@@ -449,6 +453,8 @@ export default async function PlayerProfilePage({
           <StatCard label="MVPs" value={formatInteger(stats.manOfTheMatch)} badge={rankBadge(ranks.mvps)} />
         </div>
       </section>
+
+      {overallTrend && <OverallProgress trend={overallTrend} />}
 
       {scouted && (
         <section>

@@ -41,3 +41,11 @@ export interface Player extends PlayerSnapshot {
   isMember: boolean;
   lastSyncedAt: string | null;
 }
+
+/** OVR de um jogador registrado num momento (a EA só informa o atual). */
+export interface PlayerProgressPoint {
+  playerId: string;
+  capturedAt: string;
+  overall: number;
+  gamesPlayed: number;
+}

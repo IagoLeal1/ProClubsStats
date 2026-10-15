@@ -4,6 +4,7 @@ import { TriangleAlertIcon } from "lucide-react";
 import { ClubProgress } from "@/components/clubs/ClubProgress";
 import { ClubRecentMatches } from "@/components/clubs/ClubRecentMatches";
 import { ClubStats } from "@/components/clubs/ClubStats";
+import { DivisionCard } from "@/components/clubs/DivisionCard";
 import { LastSessionCard } from "@/components/clubs/LastSessionCard";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { PlayerRanking } from "@/components/players/PlayerRanking";
@@ -16,6 +17,7 @@ import { listAllClubMatches, listClubPlayerMatchStats } from "@/lib/db/matches.r
 import { listPlayersByClub } from "@/lib/db/players.repository";
 import { computeSquadForm } from "@/lib/stats/form";
 import { computeAssistLinks } from "@/lib/stats/partnerships";
+import { divisionTimeline } from "@/lib/stats/progress";
 import { buildPlayerRankings } from "@/lib/stats/player-stats";
 import { groupSessions, summarizeSession } from "@/lib/stats/sessions";
 import { groupWeeks, pickTeamOfTheWeek } from "@/lib/stats/weeks";
@@ -98,6 +100,7 @@ export default async function ClubDashboardPage({
               {assistLinks.confirmedAssists} de {assistLinks.totalAssists} assistências confirmadas · ver recordes
             </Link>
           </section>
+          {club.division && <DivisionCard division={club.division} timeline={divisionTimeline(progress)} />}
           <ClubProgress points={progress} />
         </aside>
       </div>

@@ -1,4 +1,5 @@
 import type {
+  ClubDivision,
   ClubRecord,
   ClubSearchResult,
   ClubSnapshot,
@@ -144,6 +145,18 @@ export function mapEAClub(
     regionId: details.regionId,
     skillRating: overall?.skillRating ?? null,
     record: overall ? mapRecord(overall) : EMPTY_RECORD,
+    // Vem de outra consulta (o ranking): ver fetchClubDivision.
+    division: null,
+  };
+}
+
+/** Linha do ranking geral → divisão do clube. */
+export function mapEADivision(entry: EALeaderboardEntry): ClubDivision {
+  return {
+    current: entry.currentDivision,
+    best: entry.bestDivision,
+    promotions: entry.promotions,
+    relegations: entry.relegations,
   };
 }
 

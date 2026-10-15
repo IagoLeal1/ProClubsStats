@@ -1,11 +1,11 @@
 import "server-only";
 
 import type { TableRow } from "@/types/database";
-import { POSITION_GROUPS, type Player, type PlayerSnapshot } from "@/types/player";
+import { POSITION_GROUPS, type Player, type PlayerProgressPoint, type PlayerSnapshot } from "@/types/player";
 
 import { getDbAdmin, getDbReader } from "./client";
 import { parseEnumOrNull } from "./enums";
-import { assertOk, unwrap, unwrapMaybe } from "./errors";
+import { assertOk, fetchAllPages, unwrap, unwrapMaybe } from "./errors";
 
 export interface PlayerIdentity {
   id: string;
@@ -90,12 +90,19 @@ export async function listPlayerIdentities(clubId: string): Promise<PlayerIdenti
  * Atualiza estatísticas dos membros atuais (chave: club_id + name).
  * `ea_player_id` não é enviado, então não é sobrescrito.
  */
+/** O que o upsert devolve de cada membro: base para registrar a evolução do OVR. */
+export interface SavedMember {
+  id: string;
+  overall: number | null;
+  gamesPlayed: number;
+}
+
 export async function upsertMemberSnapshots(
   clubId: string,
   members: PlayerSnapshot[],
   syncedAt: string,
-): Promise<void> {
-  if (members.length === 0) return;
+): Promise<SavedMember[]> {
+  if (members.length === 0) return [];
 
   // Um upsert não pode atualizar a mesma linha duas vezes no mesmo comando.
   const uniqueMembers = [...new Map(members.map((member) => [member.name, member])).values()];
@@ -124,10 +131,52 @@ export async function upsertMemberSnapshots(
     last_synced_at: syncedAt,
   }));
 
-  assertOk(
-    await getDbAdmin().from("players").upsert(rows, { onConflict: "club_id,name" }),
+  const saved = unwrap(
+    await getDbAdmin()
+      .from("players")
+      .upsert(rows, { onConflict: "club_id,name" })
+      .select("id, overall, games_played"),
     "salvar jogadores",
   );
+  return saved.map((row) => ({ id: row.id, overall: row.overall, gamesPlayed: row.games_played }));
+}
+
+/**
+ * Um ponto na evolução do OVR de cada membro por nº de jogos (a EA só informa
+ * o OVR atual). Repetir o mesmo nº de jogos não grava de novo.
+ */
+export async function recordPlayerProgress(members: SavedMember[]): Promise<void> {
+  const rows = members.flatMap((member) =>
+    member.overall !== null && member.overall > 0
+      ? [{ player_id: member.id, overall: member.overall, games_played: member.gamesPlayed }]
+      : [],
+  );
+  if (rows.length === 0) return;
+  assertOk(
+    await getDbAdmin()
+      .from("player_progress")
+      .upsert(rows, { onConflict: "player_id,games_played", ignoreDuplicates: true }),
+    "registrar evolução dos jogadores",
+  );
+}
+
+/** Evolução do OVR dos jogadores do clube, do registro mais antigo ao mais recente. */
+export async function listClubPlayerProgress(clubId: string): Promise<PlayerProgressPoint[]> {
+  const rows = await fetchAllPages((from, to) =>
+    getDbReader()
+      .from("player_progress")
+      .select("player_id, captured_at, overall, games_played, players!inner(club_id)")
+      .eq("players.club_id", clubId)
+      .order("captured_at", { ascending: true })
+      .range(from, to),
+    "listar evolução dos jogadores",
+  );
+  return rows.map((row) => ({
+    playerId: row.player_id,
+    capturedAt: row.captured_at,
+    overall: row.overall,
+    gamesPlayed: row.games_played,
+  }));
 }
 
 /** Jogadores que saíram do clube não são apagados: apenas deixam de ser membros. */
