@@ -79,6 +79,8 @@ Localmente (rede residencial) a EA responde normalmente: o site sincroniza diret
 
 ## Arquitetura
 
+Visão geral com diagramas em [`/arquitetura`](https://pro-clubs-stats-two.vercel.app/arquitetura) (arquivo estático [`public/arquitetura.html`](public/arquitetura.html); atualize junto quando a arquitetura mudar).
+
 ```
 src/
 ├── app/                      # rotas (Server Components por padrão)

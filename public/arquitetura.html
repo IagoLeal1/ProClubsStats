@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0c0e">
+<meta name="description" content="Como o FC Clubs Stats funciona: onde fica o backend, como qualquer clube entra, a sincronização com a EA, o banco e onde mexer no código.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>Arquitetura do FC Clubs Stats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,800&display=swap">
+<style>
+  /* Layout: coluna única de leitura (≈72ch) com diagramas largos em painéis roláveis; visual "Matchday" do próprio site, só tema escuro. */
+  :root {
+    --bg: #0b0c0e;
+    --card: #15171b;
+    --surface: #1e2026;
+    --line: #2a2d34;
+    --fg: #f2f4f7;
+    --muted: #9ba1ac;
+    --green: #22c55e;
+    --green-dim: #16a34a;
+    --red: #ff5a4f;
+    --sans: "Barlow", system-ui, sans-serif;
+    --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  .page {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding-block: 40px 72px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex;
+    flex-direction: column;
+    gap: 64px;
+  }
+  .prose { max-width: 72ch; }
+  p { margin: 0; }
+  p + p { margin-top: 12px; }
+  a { color: var(--green); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+  code, .mono { font-family: var(--mono); font-size: 0.88em; }
+  code { background: var(--surface); padding: 1px 6px; border-radius: 4px; overflow-wrap: anywhere; }
+
+  .kicker {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--green);
+  }
+  .figure-title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-style: italic;
+    line-height: 0.92;
+    text-transform: uppercase;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h1.figure-title { font-size: clamp(44px, 9vw, 92px); }
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--display);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    font-size: 18px;
+  }
+  .logo b {
+    background: var(--green);
+    color: var(--bg);
+    font-weight: 800;
+    font-style: italic;
+    padding: 2px 16px;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  }
+  .hero { display: flex; flex-direction: column; gap: 20px; }
+  .hero .lede { font-size: 18px; color: var(--muted); max-width: 64ch; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    border: 1px solid var(--line);
+    background: var(--card);
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 14px;
+    color: var(--fg);
+  }
+  .chip span { color: var(--muted); }
+
+  section { display: flex; flex-direction: column; gap: 20px; }
+  .section-head { display: flex; flex-direction: column; gap: 6px; }
+  .section-head h2 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .section-head h2::before {
+    content: "";
+    width: 5px;
+    height: 22px;
+    background: var(--green);
+    transform: skewX(-12deg);
+    flex: none;
+  }
+  .section-head p { color: var(--muted); max-width: 72ch; }
+
+  figure { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .diagram {
+    border: 1px solid var(--line);
+    background: var(--card);
+    overflow-x: auto;
+    padding: 16px;
+  }
+  .diagram svg { display: block; width: 100%; min-width: 760px; height: auto; }
+  figcaption { color: var(--muted); font-size: 14px; max-width: 80ch; }
+
+  /* Diagramas: cores pelos tokens da página. */
+  .dg-box { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+  .dg-box.key { stroke: var(--green); }
+  .dg-box.ext { fill: var(--bg); stroke: var(--muted); stroke-dasharray: 5 4; }
+  .dg-title { fill: var(--fg); font-family: var(--display); font-weight: 700; font-size: 17px; letter-spacing: 0.04em; }
+  .dg-sub { fill: var(--muted); font-family: var(--sans); font-size: 12.5px; }
+  .dg-label { fill: var(--fg); font-family: var(--sans); font-size: 12.5px; font-weight: 600; }
+  .dg-label.green { fill: var(--green); }
+  .dg-label.red { fill: var(--red); }
+  .dg-line { stroke: var(--muted); stroke-width: 1.75; fill: none; }
+  .dg-line.green { stroke: var(--green); stroke-width: 2.25; }
+  .dg-line.red { stroke: var(--red); stroke-width: 2; stroke-dasharray: 7 5; }
+  .mk-muted { fill: var(--muted); }
+  .mk-green { fill: var(--green); }
+  .mk-red { fill: var(--red); }
+  .dg-x { stroke: var(--red); stroke-width: 3; stroke-linecap: round; }
+  .dg-pill { fill: var(--green); }
+  .dg-pill-text { fill: var(--bg); font-family: var(--display); font-weight: 800; font-size: 13px; }
+
+  /* Onde fica o backend. */
+  .backend { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .backend article { border: 1px solid var(--line); border-top: 3px solid var(--green); background: var(--card); padding: 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .backend h3 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .backend .where { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--green); }
+  .backend p { font-size: 14.5px; color: var(--muted); }
+
+  /* Passo a passo da sincronização. */
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(176px, 1fr)); gap: 12px; counter-reset: step; }
+  .steps li {
+    counter-increment: step;
+    border: 1px solid var(--line);
+    background: var(--card);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+  .steps li::before {
+    content: counter(step);
+    font-family: var(--display);
+    font-weight: 800;
+    font-style: italic;
+    font-size: 40px;
+    line-height: 0.9;
+    color: var(--green);
+  }
+  .steps h3 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .steps p { font-size: 14.5px; color: var(--muted); }
+  .steps .writes { font-size: 13px; color: var(--fg); }
+  .steps .writes code { font-size: 12px; }
+
+  /* Guardado × calculado. */
+  .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .panel { border: 1px solid var(--line); background: var(--card); padding: 20px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .panel.key { border-top: 3px solid var(--green); }
+  .panel h3 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .panel ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+  .panel li::marker { color: var(--green); }
+  .panel .note { font-size: 14px; color: var(--muted); }
+
+  /* Limites da EA. */
+  .limits { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .limit { border: 1px solid var(--line); background: var(--card); padding: 18px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .limit strong { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: 0.03em; }
+  .limit p { font-size: 14.5px; color: var(--muted); }
+  .limit p em { color: var(--fg); font-style: normal; font-weight: 600; }
+
+  /* Tabelas. */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); background: var(--card); }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); background: var(--surface); }
+  td:first-child { font-weight: 600; }
+
+  .foot { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 20px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .steps li, .panel, .limit { transition: border-color 0.15s ease; }
+    .steps li:hover, .limit:hover { border-color: var(--muted); }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <span class="logo"><b>FC</b>CLUBS STATS</span>
+    <span class="kicker">Por dentro do site</span>
+    <h1 class="figure-title">Como o FC Clubs Stats funciona</h1>
+    <p class="lede">
+      O site acompanha qualquer clube do Pro Clubs: lê os números na API da EA, guarda tudo num
+      banco Postgres e monta as páginas a partir desse histórico. A peça menos óbvia: quem conversa com a
+      EA não é o site na Vercel, e sim um robô no GitHub Actions, porque a EA bloqueia os servidores
+      da Vercel.
+    </p>
+    <div class="chips" aria-label="Tecnologias">
+      <span class="chip">Next.js 16 <span>· telas</span></span>
+      <span class="chip">TypeScript <span>· tudo</span></span>
+      <span class="chip">Supabase Postgres <span>· banco</span></span>
+      <span class="chip">GitHub Actions <span>· sincronização</span></span>
+      <span class="chip">Vercel <span>· hospedagem</span></span>
+      <span class="chip">Tailwind + shadcn/ui <span>· visual</span></span>
+      <span class="chip">Zod <span>· validação</span></span>
+    </div>
+  </header>
+
+  <section aria-labelledby="mapa">
+    <div class="section-head">
+      <h2 id="mapa">Mapa geral</h2>
+      <p>Quatro peças e quem fala com quem. As setas verdes são o caminho dos dados novos.</p>
+    </div>
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 1040 430" role="img" aria-label="O GitHub Actions busca os dados na EA e grava no Supabase; a Vercel lê do Supabase para montar as páginas e, quando precisa de dados novos, pede uma sincronização ao GitHub, porque a EA bloqueia a Vercel.">
+          <defs>
+            <marker id="ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-muted" d="M0,0 L10,5 L0,10 z"/></marker>
+            <marker id="ah-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-green" d="M0,0 L10,5 L0,10 z"/></marker>
+            <marker id="ah-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-red" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+
+          <!-- EA -->
+          <rect class="dg-box ext" x="20" y="170" width="190" height="96"/>
+          <text class="dg-title" x="40" y="204">API DA EA</text>
+          <text class="dg-sub" x="40" y="226">proclubs.ea.com/api/fc</text>
+          <text class="dg-sub" x="40" y="246">não oficial · só leitura</text>
+
+          <!-- GitHub Actions -->
+          <rect class="dg-box key" x="350" y="24" width="250" height="110"/>
+          <text class="dg-title" x="370" y="58">GITHUB ACTIONS</text>
+          <text class="dg-sub" x="370" y="80">npm run sync · Node 24</text>
+          <text class="dg-sub" x="370" y="100">a cada 15 min ou quando</text>
+          <text class="dg-sub" x="370" y="118">alguém pede atualização</text>
+
+          <!-- Supabase -->
+          <rect class="dg-box key" x="350" y="300" width="250" height="110"/>
+          <text class="dg-title" x="370" y="334">SUPABASE POSTGRES</text>
+          <text class="dg-sub" x="370" y="356">histórico de partidas,</text>
+          <text class="dg-sub" x="370" y="374">jogadores, evolução e</text>
+          <text class="dg-sub" x="370" y="392">formações · nada é apagado</text>
+
+          <!-- Vercel -->
+          <rect class="dg-box" x="700" y="170" width="200" height="96"/>
+          <text class="dg-title" x="720" y="204">VERCEL · NEXT.JS</text>
+          <text class="dg-sub" x="720" y="226">monta as páginas no</text>
+          <text class="dg-sub" x="720" y="246">servidor (região gru1)</text>
+
+          <!-- Navegador -->
+          <rect class="dg-box ext" x="930" y="178" width="96" height="80"/>
+          <text class="dg-title" x="946" y="212">VOCÊS</text>
+          <text class="dg-sub" x="946" y="234">navegador</text>
+
+          <!-- Actions → EA -->
+          <line class="dg-line green" x1="350" y1="96" x2="214" y2="176" marker-end="url(#ah-green)"/>
+          <text class="dg-label green" x="30" y="130">busca clube, membros</text>
+          <text class="dg-label green" x="30" y="146">e partidas</text>
+
+          <!-- Actions → Supabase -->
+          <line class="dg-line green" x1="475" y1="134" x2="475" y2="294" marker-end="url(#ah-green)"/>
+          <text class="dg-label green" x="486" y="226">grava (chave secreta)</text>
+
+          <!-- Vercel → Supabase -->
+          <line class="dg-line" x1="726" y1="266" x2="606" y2="336" marker-end="url(#ah-muted)"/>
+          <text class="dg-label" x="672" y="324">lê (chave pública)</text>
+
+          <!-- Vercel → EA: bloqueado -->
+          <line class="dg-line red" x1="700" y1="250" x2="216" y2="250" marker-end="url(#ah-red)"/>
+          <line class="dg-x" x1="292" y1="240" x2="312" y2="260"/>
+          <line class="dg-x" x1="312" y1="240" x2="292" y2="260"/>
+          <text class="dg-label red" x="226" y="282">bloqueado (403)</text>
+
+          <!-- Vercel → Actions -->
+          <line class="dg-line" x1="760" y1="170" x2="606" y2="96" marker-end="url(#ah-muted)"/>
+          <text class="dg-label" x="690" y="110">pede sincronização</text>
+          <text class="dg-sub" x="690" y="126">workflow_dispatch</text>
+
+          <!-- Vocês → Vercel -->
+          <line class="dg-line" x1="930" y1="218" x2="906" y2="218" marker-end="url(#ah-muted)"/>
+        </svg>
+      </div>
+      <figcaption>
+        A Vercel nunca busca dados na EA diretamente: o firewall da EA (Akamai) recusa os IPs da
+        Vercel com 403. Quando alguém toca em "Atualizar" ou abre um clube com dados de mais de
+        20 minutos, o site pede ao GitHub Actions uma sincronização, que roda em 1 a 2 minutos.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="backend">
+    <div class="section-head">
+      <h2 id="backend">Onde fica o backend</h2>
+      <p>
+        Não existe um servidor próprio ligado o tempo todo. O backend são três serviços gerenciados,
+        dois deles em São Paulo, perto de quem usa o site.
+      </p>
+    </div>
+    <div class="backend">
+      <article>
+        <span class="where">Vercel · região gru1 (São Paulo)</span>
+        <h3>Servidor do Next.js</h3>
+        <p>Funções que sobem a cada visita: montam as páginas no servidor, salvam as formações e geram os cards do WhatsApp. Não guardam nada entre uma visita e outra.</p>
+      </article>
+      <article>
+        <span class="where">Supabase · sa-east-1 (São Paulo)</span>
+        <h3>Postgres 17</h3>
+        <p>O banco, com uma API automática na frente. Na mesma região da Vercel, então cada consulta faz uma viagem curta. As regras de acesso deixam qualquer um ler e só a chave secreta gravar.</p>
+      </article>
+      <article>
+        <span class="where">GitHub Actions · servidores do GitHub</span>
+        <h3>Robô de sincronização</h3>
+        <p>Um script em Node 24 que liga, conversa com a EA, grava no banco e desliga. É o único que a EA aceita, e roda de graça porque o repositório é público.</p>
+      </article>
+    </div>
+  </section>
+
+  <section aria-labelledby="clubes">
+    <div class="section-head">
+      <h2 id="clubes">Qualquer clube</h2>
+      <p>
+        Nada no código fica preso a um clube: qualquer um do Pro Clubs pode ser acompanhado, no
+        PS5/Xbox/PC (crossplay) ou no Switch.
+      </p>
+    </div>
+    <div class="limits">
+      <div class="limit">
+        <strong>Buscar pelo nome</strong>
+        <p>Mostra os clubes que o site já acompanha. A busca por nome na EA também fica bloqueada na Vercel, então <em>clubes novos entram pelo ID</em>.</p>
+      </div>
+      <div class="limit">
+        <strong>Adicionar pelo ID</strong>
+        <p>Com o ID do clube na EA, o botão "Adicionar clube" pede ao robô para buscá-lo. <em>Em 1 a 2 minutos</em> o clube aparece com o histórico disponível.</p>
+      </div>
+      <div class="limit">
+        <strong>Manter atualizado</strong>
+        <p>A cada 15 minutos o agendamento sincroniza <em>até 20 clubes</em>, começando pelos que estão há mais tempo sem atualizar (mais de 10 minutos).</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="sync">
+    <div class="section-head">
+      <h2 id="sync">Uma sincronização</h2>
+      <p>
+        O mesmo fluxo roda pelo agendamento, pelo botão ou pela visita a um clube desatualizado. É
+        idempotente: rodar duas vezes não duplica nada.
+      </p>
+    </div>
+    <ol class="steps">
+      <li>
+        <h3>Gatilho</h3>
+        <p>Agendamento a cada 15 min, botão "Atualizar", clube novo adicionado pelo ID ou visita com dados de mais de 20 min. Pedidos repetidos viram uma execução na fila.</p>
+        <span class="writes">roda <code>scripts/sync-clubs.ts</code></span>
+      </li>
+      <li>
+        <h3>Clube</h3>
+        <p>Informações, campanha e skill rating; a divisão vem da busca do ranking, o único lugar onde a EA a informa.</p>
+        <span class="writes">grava <code>clubs</code> e <code>club_progress</code></span>
+      </li>
+      <li>
+        <h3>Jogadores</h3>
+        <p>Membros com as estatísticas da temporada e o OVR. Quem sai do clube vira ex-membro, nunca é apagado.</p>
+        <span class="writes">grava <code>players</code> e <code>player_progress</code></span>
+      </li>
+      <li>
+        <h3>Partidas</h3>
+        <p>Liga, playoff e amistoso, as 10 últimas de cada. Cada partida tem uma impressão digital (<code>ea:&lt;id&gt;</code>), então repetir não duplica.</p>
+        <span class="writes">grava <code>matches</code>, <code>match_team_stats</code>, <code>player_match_stats</code></span>
+      </li>
+      <li>
+        <h3>Pronto</h3>
+        <p>A próxima visita já lê os dados novos. Se uma etapa falhar, as outras seguem e a página avisa que a sincronização foi parcial.</p>
+        <span class="writes">nada a gravar</span>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="camadas">
+    <div class="section-head">
+      <h2 id="camadas">Camadas do código</h2>
+      <p>Duas regras seguram o projeto: só <code>src/lib/ea</code> fala com a EA e só <code>src/lib/db</code> fala com o banco.</p>
+    </div>
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 960 400" role="img" aria-label="As telas em src/app usam src/components e os cálculos de src/lib/stats e leem o banco por src/lib/db. O script de sincronização usa src/services/sync, que busca na EA por src/lib/ea e grava por src/lib/db.">
+          <defs>
+            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-muted" d="M0,0 L10,5 L0,10 z"/></marker>
+            <marker id="ah2g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-green" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+
+          <!-- Lado das telas -->
+          <rect class="dg-box" x="20" y="20" width="420" height="78"/>
+          <text class="dg-title" x="40" y="52">SRC/APP · TELAS</text>
+          <text class="dg-sub" x="40" y="76">rotas, leitura no servidor, salvar formação, cards do WhatsApp</text>
+
+          <rect class="dg-box" x="20" y="152" width="200" height="78"/>
+          <text class="dg-title" x="40" y="184">SRC/COMPONENTS</text>
+          <text class="dg-sub" x="40" y="208">peças visuais</text>
+
+          <rect class="dg-box key" x="240" y="152" width="200" height="78"/>
+          <text class="dg-title" x="260" y="184">SRC/LIB/STATS</text>
+          <text class="dg-sub" x="260" y="208">cálculos puros</text>
+
+          <!-- Lado da sincronização -->
+          <rect class="dg-box" x="520" y="20" width="420" height="78"/>
+          <text class="dg-title" x="540" y="52">SCRIPTS/SYNC-CLUBS.TS</text>
+          <text class="dg-sub" x="540" y="76">o que o GitHub Actions executa</text>
+
+          <rect class="dg-box" x="520" y="152" width="420" height="78"/>
+          <text class="dg-title" x="540" y="184">SRC/SERVICES/SYNC</text>
+          <text class="dg-sub" x="540" y="208">clube → jogadores → partidas, cada etapa tolerante a falha</text>
+
+          <!-- Base -->
+          <rect class="dg-box key" x="20" y="284" width="420" height="78"/>
+          <text class="dg-title" x="40" y="316">SRC/LIB/DB · REPOSITÓRIOS</text>
+          <text class="dg-sub" x="40" y="340">único acesso ao Supabase (leitura e escrita)</text>
+
+          <rect class="dg-box key" x="520" y="284" width="420" height="78"/>
+          <text class="dg-title" x="540" y="316">SRC/LIB/EA · CLIENTE DA EA</text>
+          <text class="dg-sub" x="540" y="340">único acesso à EA: retries, timeout, Zod</text>
+
+          <!-- Setas -->
+          <line class="dg-line" x1="120" y1="98" x2="120" y2="148" marker-end="url(#ah2)"/>
+          <line class="dg-line" x1="340" y1="98" x2="340" y2="148" marker-end="url(#ah2)"/>
+          <text class="dg-label" x="350" y="130">calcula</text>
+          <path class="dg-line" d="M430,98 C470,150 470,230 430,280" marker-end="url(#ah2)"/>
+          <text class="dg-label" x="466" y="196">lê</text>
+          <line class="dg-line" x1="730" y1="98" x2="730" y2="148" marker-end="url(#ah2)"/>
+          <line class="dg-line green" x1="730" y1="230" x2="730" y2="280" marker-end="url(#ah2g)"/>
+          <text class="dg-label green" x="740" y="262">busca</text>
+          <line class="dg-line green" x1="530" y1="230" x2="446" y2="290" marker-end="url(#ah2g)"/>
+          <text class="dg-label green" x="452" y="262">grava</text>
+        </svg>
+      </div>
+      <figcaption>
+        Os cálculos de <code>src/lib/stats</code> não acessam nada: recebem partidas e estatísticas e
+        devolvem números. Por isso dá para testá-los com dados de exemplo e trocar uma fórmula sem
+        mexer no resto.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="banco">
+    <div class="section-head">
+      <h2 id="banco">O banco</h2>
+      <p>Nove tabelas. Qualquer um pode ler (a chave pública só lê); só o GitHub Actions e o servidor do site escrevem, com a chave secreta.</p>
+    </div>
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 960 470" role="img" aria-label="clubs tem players, matches, club_progress e formations. players tem player_progress. Cada partida tem match_team_stats e player_match_stats, que ligam partida e jogador. formations tem 11 formation_players, cada uma com um jogador ou vazia para a IA.">
+          <defs>
+            <marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-muted" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+
+          <!-- Coluna 1 -->
+          <rect class="dg-box" x="20" y="20" width="250" height="84"/>
+          <text class="dg-title" x="40" y="52">CLUB_PROGRESS</text>
+          <text class="dg-sub" x="40" y="74">skill rating, campanha e divisão</text>
+          <text class="dg-sub" x="40" y="92">por nº de jogos</text>
+
+          <rect class="dg-box key" x="20" y="190" width="250" height="84"/>
+          <text class="dg-title" x="40" y="222">CLUBS</text>
+          <text class="dg-sub" x="40" y="244">o clube como a EA mostra hoje,</text>
+          <text class="dg-sub" x="40" y="262">divisão, acessos e quedas</text>
+
+          <rect class="dg-box" x="20" y="366" width="250" height="84"/>
+          <text class="dg-title" x="40" y="398">FORMATIONS</text>
+          <text class="dg-sub" x="40" y="420">nome, esquema, capitão,</text>
+          <text class="dg-sub" x="40" y="438">cobradores e código do FC</text>
+
+          <!-- Coluna 2 -->
+          <rect class="dg-box key" x="355" y="20" width="250" height="84"/>
+          <text class="dg-title" x="375" y="52">PLAYERS</text>
+          <text class="dg-sub" x="375" y="74">membros e ex-membros,</text>
+          <text class="dg-sub" x="375" y="92">temporada no clube e OVR</text>
+
+          <rect class="dg-box key" x="355" y="190" width="250" height="84"/>
+          <text class="dg-title" x="375" y="222">MATCHES</text>
+          <text class="dg-sub" x="375" y="244">placar, tipo, adversário,</text>
+          <text class="dg-sub" x="375" y="262">data e impressão digital</text>
+
+          <rect class="dg-box" x="355" y="366" width="250" height="84"/>
+          <text class="dg-title" x="375" y="398">FORMATION_PLAYERS</text>
+          <text class="dg-sub" x="375" y="420">11 vagas: jogador (ou IA),</text>
+          <text class="dg-sub" x="375" y="438">posição, x/y, arquétipo</text>
+
+          <!-- Coluna 3 -->
+          <rect class="dg-box" x="690" y="20" width="250" height="84"/>
+          <text class="dg-title" x="710" y="52">PLAYER_PROGRESS</text>
+          <text class="dg-sub" x="710" y="74">OVR de cada Pro</text>
+          <text class="dg-sub" x="710" y="92">por nº de jogos</text>
+
+          <rect class="dg-box key" x="690" y="134" width="250" height="84"/>
+          <text class="dg-title" x="710" y="166">PLAYER_MATCH_STATS</text>
+          <text class="dg-sub" x="710" y="188">nota, gols, assistências, passes,</text>
+          <text class="dg-sub" x="710" y="206">desarmes de cada um por partida</text>
+
+          <rect class="dg-box" x="690" y="246" width="250" height="84"/>
+          <text class="dg-title" x="710" y="278">MATCH_TEAM_STATS</text>
+          <text class="dg-sub" x="710" y="300">números do time e do adversário</text>
+          <text class="dg-sub" x="710" y="318">(uma linha para cada lado)</text>
+
+          <!-- Ligações -->
+          <line class="dg-line" x1="145" y1="190" x2="145" y2="108" marker-end="url(#ah3)"/>
+          <line class="dg-line" x1="145" y1="274" x2="145" y2="362" marker-end="url(#ah3)"/>
+          <line class="dg-line" x1="270" y1="214" x2="352" y2="78" marker-end="url(#ah3)"/>
+          <line class="dg-line" x1="270" y1="232" x2="351" y2="232" marker-end="url(#ah3)"/>
+          <line class="dg-line" x1="270" y1="408" x2="351" y2="408" marker-end="url(#ah3)"/>
+          <line class="dg-line" x1="605" y1="62" x2="686" y2="62" marker-end="url(#ah3)"/>
+          <line class="dg-line" x1="605" y1="86" x2="687" y2="160" marker-end="url(#ah3)"/>
+          <line class="dg-line" x1="605" y1="214" x2="686" y2="190" marker-end="url(#ah3)"/>
+          <line class="dg-line" x1="605" y1="250" x2="686" y2="282" marker-end="url(#ah3)"/>
+        </svg>
+      </div>
+      <figcaption>
+        As setas vão de "um" para "muitos": um clube tem muitos jogadores e partidas; cada linha de
+        <code>player_match_stats</code> liga uma partida a um jogador, e cada vaga de formação aponta para um jogador (ou fica vazia para a
+        IA). O schema completo fica em
+        <code>supabase/schema.sql</code> e cada mudança em <code>supabase/migrations/</code>.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="guardado">
+    <div class="section-head">
+      <h2 id="guardado">Guardado ou calculado</h2>
+      <p>O banco guarda só o que a EA informou. Todo o resto é calculado na hora em que a página abre.</p>
+    </div>
+    <div class="split">
+      <div class="panel">
+        <h3>Guardado</h3>
+        <ul>
+          <li>O clube, os jogadores e as estatísticas da temporada como a EA mostra hoje</li>
+          <li>Cada partida, com os números do time, do adversário e de cada jogador</li>
+          <li>A evolução do skill rating, da divisão e do OVR (a EA só informa o valor atual)</li>
+          <li>As formações montadas no site</li>
+        </ul>
+      </div>
+      <div class="panel key">
+        <h3>Calculado ao abrir</h3>
+        <ul>
+          <li>Noites (partidas com menos de 3 h entre si), resumo e MVP da noite</li>
+          <li>Time da semana, prêmios do mês, recordes e cansaço da noite</li>
+          <li>Conexões de gol e duplas, impacto em campo, jogos decisivos</li>
+          <li>Raio-X, fase (em alta/em baixa), rendimento por posição, química na escalação</li>
+        </ul>
+        <p class="note">Por isso, melhorar uma fórmula muda todo o histórico de uma vez, sem rodar nada no banco. O preço é que cada visita relê o histórico do clube: hoje são poucas centenas de linhas, e quando forem milhares vale guardar as páginas em cache até a próxima sincronização.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="limites">
+    <div class="section-head">
+      <h2 id="limites">O que a EA não dá</h2>
+      <p>A API do Pro Clubs não é oficial nem documentada. Estes limites moldaram várias decisões.</p>
+    </div>
+    <div class="limits">
+      <div class="limit">
+        <strong>Só as 10 últimas partidas</strong>
+        <p>Por tipo de jogo. <em>Por isso a sincronização roda a cada 15 min</em>: dez jogos levam mais de duas horas e meia, então nada se perde.</p>
+      </div>
+      <div class="limit">
+        <strong>Nenhum lance a lance</strong>
+        <p>Não diz quem deu o passe de cada gol. <em>As conexões de gol</em> só contam as assistências que os números da partida garantem.</p>
+      </div>
+      <div class="limit">
+        <strong>A IA não entra</strong>
+        <p>Finalizações, passes e desarmes contam só os jogadores. <em>Gols do time</em> usam o placar, que pode ter um gol da IA.</p>
+      </div>
+      <div class="limit">
+        <strong>Só o setor, não a posição</strong>
+        <p>Cada partida diz gol, defesa, meio ou ataque. <em>Time da semana e rendimento por posição</em> trabalham por setor.</p>
+      </div>
+      <div class="limit">
+        <strong>Bloqueio na Vercel</strong>
+        <p>O firewall da EA recusa a Vercel e o Node 20. <em>O GitHub Actions com Node 24</em> passa, então ele faz as buscas.</p>
+      </div>
+      <div class="limit">
+        <strong>Só valores atuais</strong>
+        <p>Skill rating, divisão e OVR não têm histórico na EA. <em>O site guarda um registro a cada jogo</em> para desenhar a evolução.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="deploy">
+    <div class="section-head">
+      <h2 id="deploy">Deploy e configuração</h2>
+      <p>
+        Um <code>git push</code> no <code>main</code> publica o site: a Vercel faz o build e põe no ar em
+        <a href="https://pro-clubs-stats-two.vercel.app">pro-clubs-stats-two.vercel.app</a>. O GitHub
+        Actions sempre roda o código do <code>main</code>, então a sincronização nova vale na execução
+        seguinte. Mudanças no banco entram como migração em <code>supabase/migrations/</code>.
+      </p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Configuração</th><th>Onde fica</th><th>Para quê</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">NEXT_PUBLIC_SUPABASE_URL</td><td>Vercel, GitHub (variável), .env.local</td><td>Endereço do banco</td></tr>
+          <tr><td class="mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</td><td>Vercel, GitHub (variável), .env.local</td><td>Chave pública: só lê</td></tr>
+          <tr><td class="mono">SUPABASE_SERVICE_ROLE_KEY</td><td>Vercel, GitHub (secret), .env.local</td><td>Chave secreta: grava (sincronização e formações)</td></tr>
+          <tr><td class="mono">GITHUB_DISPATCH_TOKEN</td><td>Vercel</td><td>Deixa o site pedir uma sincronização ao GitHub Actions</td></tr>
+          <tr><td class="mono">EA_API_BASE_URL</td><td>opcional</td><td>Troca o endereço da EA (padrão: proclubs.ea.com/api/fc)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="mexer">
+    <div class="section-head">
+      <h2 id="mexer">Onde mexer para…</h2>
+      <p>O caminho mais curto para as mudanças mais comuns.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Quero…</th><th>Onde</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Uma estatística nova com dados que já existem</td><td>Um cálculo em <code>src/lib/stats/</code> e a tela em <code>src/app/clubs/[clubId]/</code></td></tr>
+          <tr><td>Um dado novo da EA</td><td><code>src/lib/ea/types.ts</code> e <code>mappers.ts</code>, a etapa em <code>src/services/sync/</code>, uma migração e o repositório em <code>src/lib/db/</code></td></tr>
+          <tr><td>Mudar cores, fontes ou formas</td><td><code>src/app/globals.css</code> (e o design system salvo)</td></tr>
+          <tr><td>Um card novo para o WhatsApp</td><td>Um <code>opengraph-image.tsx</code> na rota, com as peças de <code>src/components/og/</code></td></tr>
+          <tr><td>Esquemas táticos e posições</td><td><code>src/lib/formations/templates.ts</code></td></tr>
+          <tr><td>Arquétipos e pontos fortes do FC</td><td><code>src/lib/formations/archetypes.ts</code> e <code>attributes.ts</code></td></tr>
+          <tr><td>Frequência da sincronização</td><td><code>.github/workflows/sync-clubs.yml</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="foot">Retrato do código em 15/10/2026 (commit 0cecb0a, repositório IagoLeal1/ProClubsStats). <a href="/">Abrir o FC Clubs Stats</a></p>
+</main>
+</body>
+</html>
