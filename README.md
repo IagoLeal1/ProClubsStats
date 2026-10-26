@@ -182,7 +182,10 @@ região, semântica de `winnerByDnf`.
   % de acerto, MVPs, nota) com a barra do percentil dentro do elenco, estilo Sofascore.
 - **Impacto em campo**: aproveitamento do time com e sem cada jogador (compara quando há 3+
   jogos dos dois lados).
-- **Jogos decisivos**: campanha nas partidas decididas por até 1 gol e quem tem nota melhor
+- **O cara decisivo**: pontos que o time não teria sem os gols e as assistências de cada um
+  (gol no 2×1 vale a vitória, no 5×0 não muda nada). Destaque na visão geral, ranking em
+  Recordes, "Decisivo da noite", "Decisivo do mês" e selo no perfil.
+- **Jogos apertados**: campanha nas partidas decididas por até 1 gol e quem tem nota melhor
   nelas do que no geral.
 - **Prêmios do mês**: Bola de Ouro, artilheiro, garçom, muralha (desarmes) e bagre do mês, com
   card para o WhatsApp.

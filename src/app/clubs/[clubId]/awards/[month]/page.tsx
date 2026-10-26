@@ -6,6 +6,7 @@ import { PeriodNav } from "@/components/layout/PeriodNav";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { ShareButton } from "@/components/layout/ShareButton";
 import { RatingBadge } from "@/components/players/RatingBadge";
+import { decisiveOutcome } from "@/components/records/Decisive";
 import {
   Table,
   TableBody,
@@ -70,6 +71,9 @@ function shareText(clubName: string, month: GameMonth, awards: MonthAwards): str
   if (awards.goldenBall) {
     lines.push(`Bola de Ouro: ${awards.goldenBall.playerName} (nota ${formatRating(awards.goldenBall.averageRating)})`);
   }
+  if (awards.decisive) {
+    lines.push(`Decisivo do mês: ${awards.decisive.playerName} (${decisiveOutcome(awards.decisive)})`);
+  }
   for (const card of awardCards(awards)) {
     if (card.line) lines.push(`${card.label}: ${card.line.playerName} (${card.detail(card.line)})`);
   }
@@ -80,7 +84,7 @@ export default async function MonthAwardsPage({ params }: PageProps<"/clubs/[clu
   const { clubId, month: monthId } = await params;
   const { club, month, awards, previousMonthId, nextMonthId } = await loadMonth(clubId, monthId);
   const { record } = month;
-  const { goldenBall } = awards;
+  const { goldenBall, decisive } = awards;
   const profile = (line: PeriodPlayerLine) => `/clubs/${club.id}/players/${line.playerId}`;
 
   return (
@@ -120,6 +124,25 @@ export default async function MonthAwardsPage({ params }: PageProps<"/clubs/[clu
             nota {formatRating(goldenBall.averageRating)} em {plural(goldenBall.games, "jogo", "jogos")}
             {goldenBall.mvps > 0 && ` · ${goldenBall.mvps}× MVP`}
             {` · ${goldenBall.goals}G ${goldenBall.assists}A`}
+          </span>
+        </Link>
+      )}
+
+      {decisive && (
+        <Link
+          href={`/clubs/${club.id}/players/${decisive.playerId}`}
+          className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border border-primary bg-card p-5 transition-colors hover:bg-surface sm:px-8"
+        >
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="kicker text-primary">Decisivo do mês</span>
+            <span className="figure text-4xl break-all uppercase sm:text-5xl">{decisive.playerName}</span>
+            <span className="text-sm text-muted-foreground">
+              {capitalize(decisiveOutcome(decisive))} · {decisive.goals}G {decisive.assists}A que mudaram o resultado
+            </span>
+          </span>
+          <span className="shrink-0 text-sm text-muted-foreground">
+            <span className="figure text-5xl text-primary tabular">{decisive.points}</span>{" "}
+            {decisive.points === 1 ? "ponto" : "pontos"}
           </span>
         </Link>
       )}

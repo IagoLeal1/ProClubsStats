@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 
 import { listAllClubMatches, listClubPlayerMatchStats, listTeamStats } from "@/lib/db/matches.repository";
+import { computeDecisive, topDecisive } from "@/lib/stats/decisive";
 import { groupSessions, sessionTeamStats, summarizeSession } from "@/lib/stats/sessions";
 
 import { isValidId, loadClub } from "../../load-club";
@@ -25,6 +26,7 @@ export const loadSession = cache(async (clubId: string, sessionId: string) => {
     club,
     session,
     summary: summarizeSession(session, stats),
+    decisive: topDecisive(computeDecisive(session.matches, stats)),
     teamStats: sessionTeamStats(session, teamStats),
   };
 });

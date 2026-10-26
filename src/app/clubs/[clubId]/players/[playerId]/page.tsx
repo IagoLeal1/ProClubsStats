@@ -17,6 +17,7 @@ import { PositionSplits } from "@/components/players/PositionSplits";
 import { RatingBadge } from "@/components/players/RatingBadge";
 import { ScoutReport } from "@/components/players/ScoutReport";
 import { AssistLinks } from "@/components/records/AssistLinks";
+import { decisiveOutcome } from "@/components/records/Decisive";
 import { ImpactDelta } from "@/components/records/ImpactTable";
 import { StatCard } from "@/components/stats/StatCard";
 import {
@@ -33,6 +34,7 @@ import {
   formatRating,
 } from "@/lib/format";
 import { ratingScale } from "@/lib/stats/chart-scale";
+import { computeDecisive, type DecisivePlayer } from "@/lib/stats/decisive";
 import { computeForm, type PlayerForm } from "@/lib/stats/form";
 import { computeImpact, MIN_IMPACT_GAMES, type PlayerImpact } from "@/lib/stats/impact";
 import {
@@ -138,6 +140,7 @@ interface Accolades {
   topScorer: boolean;
   topAssister: boolean;
   topMvp: boolean;
+  mostDecisive: boolean;
 }
 
 function PlayerHero({
@@ -153,6 +156,7 @@ function PlayerHero({
 }) {
   const position = player.position ?? formatPositionGroupShort(player.favoritePosition);
   const badges = [
+    accolades.mostDecisive && "O cara decisivo",
     accolades.topScorer && "Artilheiro do elenco",
     accolades.topAssister && "Garçom do elenco",
     accolades.topMvp && "Mais MVPs do elenco",
@@ -283,6 +287,38 @@ function ImpactCard({ impact }: { impact: PlayerImpact }) {
   );
 }
 
+function DecisiveCard({ clubId, line, position }: { clubId: string; line: DecisivePlayer; position: number | null }) {
+  const outcome = decisiveOutcome(line);
+  return (
+    <Link
+      href={`/clubs/${clubId}/records#decisivos`}
+      className="flex flex-wrap items-center justify-between gap-4 border bg-card p-4 transition-colors hover:bg-surface sm:px-5"
+    >
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="kicker text-muted-foreground">Decisivo</span>
+        <span className="text-sm">
+          {line.points > 0 ? (
+            <>
+              {outcome.charAt(0).toUpperCase() + outcome.slice(1)} ·{" "}
+              <span className="font-semibold">
+                {line.goals}G {line.assists}A
+              </span>{" "}
+              que mudaram o resultado
+            </>
+          ) : (
+            "Nenhum gol ou assistência dele mudou um resultado ainda"
+          )}
+        </span>
+        <span className="text-xs text-muted-foreground">Pontos que o time não teria sem os gols e as assistências dele</span>
+      </span>
+      <span className="shrink-0 text-sm text-muted-foreground">
+        <span className="figure text-4xl text-primary tabular">{line.points}</span> pts
+        {position !== null && ` · ${position}º do clube`}
+      </span>
+    </Link>
+  );
+}
+
 function BestMatch({ entry }: { entry: PlayerMatchEntry }) {
   const { match, stats } = entry;
   return (
@@ -394,6 +430,10 @@ export default async function PlayerProfilePage({
   );
   const splits = splitByPosition(history);
   const impact = computeImpact(clubMatches, clubStats, squad).find((candidate) => candidate.playerId === player.id);
+  // Ordenado por pontos: quem tem pontos vem antes, então o índice é a posição no ranking.
+  const decisiveLines = computeDecisive(clubMatches, clubStats);
+  const decisive = decisiveLines.find((line) => line.playerId === player.id);
+  const decisivePosition = decisive && decisive.points > 0 ? decisiveLines.indexOf(decisive) + 1 : null;
   const scouting = scoutPlayer(squad, player);
   const scouted = scouting.some((metric) => metric.percentile !== null);
   const rank = (value: (candidate: Player) => number | null) => rankInSquad(squad, player, value);
@@ -428,6 +468,7 @@ export default async function PlayerProfilePage({
             topScorer: isFirst(ranks.goals) && stats.goals > 0,
             topAssister: isFirst(ranks.assists) && stats.assists > 0,
             topMvp: isFirst(ranks.mvps) && stats.manOfTheMatch > 0,
+            mostDecisive: decisivePosition === 1,
           }}
           form={form}
         />
@@ -487,6 +528,9 @@ export default async function PlayerProfilePage({
             <HistoryHighlights summary={summary} />
             {form && <FormCard form={form} />}
             {impact && <ImpactCard impact={impact} />}
+            {decisive && (
+              <DecisiveCard clubId={club.id} line={decisive} position={decisivePosition} />
+            )}
 
             <div className="border bg-card p-4 sm:p-5">
               <div className="mb-3 flex items-baseline justify-between gap-3">

@@ -10,11 +10,13 @@ import { SectionHeading } from "@/components/layout/SectionHeading";
 import { PlayerRanking } from "@/components/players/PlayerRanking";
 import { SquadFormCard } from "@/components/players/SquadFormCard";
 import { AssistLinks } from "@/components/records/AssistLinks";
+import { DecisiveSpotlight } from "@/components/records/Decisive";
 import { TeamOfWeekCard } from "@/components/weeks/TeamOfWeekCard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { listClubProgress } from "@/lib/db/clubs.repository";
 import { listAllClubMatches, listClubPlayerMatchStats } from "@/lib/db/matches.repository";
 import { listPlayersByClub } from "@/lib/db/players.repository";
+import { computeDecisive } from "@/lib/stats/decisive";
 import { computeSquadForm } from "@/lib/stats/form";
 import { computeAssistLinks } from "@/lib/stats/partnerships";
 import { divisionTimeline } from "@/lib/stats/progress";
@@ -69,6 +71,8 @@ export default async function ClubDashboardPage({
       )}
 
       <ClubStats record={club.record} />
+
+      <DecisiveSpotlight clubId={club.id} players={computeDecisive(matches, stats)} />
 
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-8">

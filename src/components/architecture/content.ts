@@ -445,7 +445,7 @@ export const STORED: string[] = [
 export const COMPUTED: string[] = [
   "Noites (partidas com menos de 3 h entre si), resumo e MVP da noite",
   "Time da semana, prêmios do mês, recordes e cansaço da noite",
-  "Conexões de gol e duplas, impacto em campo, jogos decisivos",
+  "O cara decisivo, conexões de gol e duplas, impacto em campo, jogos apertados",
   "Raio-X, fase (em alta ou em baixa), rendimento por posição, química na escalação",
 ];
 

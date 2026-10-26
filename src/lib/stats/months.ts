@@ -1,5 +1,6 @@
 import type { ClubPlayerMatchStat, Match } from "@/types/match";
 
+import { computeDecisive, topDecisive, type DecisivePlayer } from "./decisive";
 import {
   byPerformance,
   groupByPeriod,
@@ -58,6 +59,8 @@ export interface MonthAwards {
   wall: PeriodPlayerLine | null;
   /** Pior nota média entre os mesmos elegíveis da Bola de Ouro. */
   flop: PeriodPlayerLine | null;
+  /** Quem mais garantiu pontos com gols e assistências. */
+  decisive: DecisivePlayer | null;
   minGames: number;
   /** Todos que jogaram no mês, do melhor para o pior. */
   players: PeriodPlayerLine[];
@@ -85,6 +88,7 @@ export function pickMonthAwards(month: GameMonth, stats: ClubPlayerMatchStat[]):
     topAssister: mostOf(players, (line) => line.assists),
     wall: mostOf(players, (line) => line.tackles),
     flop,
+    decisive: topDecisive(computeDecisive(month.matches, stats)),
     minGames,
     players,
   };

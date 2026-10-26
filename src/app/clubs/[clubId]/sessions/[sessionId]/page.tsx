@@ -9,6 +9,7 @@ import { MatchCard, MatchList } from "@/components/matches/MatchCard";
 import { MatchResult } from "@/components/matches/MatchResult";
 import { MatchTeamStats } from "@/components/matches/MatchTeamStats";
 import { RatingBadge } from "@/components/players/RatingBadge";
+import { decisiveOutcome } from "@/components/records/Decisive";
 import {
   Table,
   TableBody,
@@ -20,14 +21,13 @@ import {
 import {
   formatPercent,
   formatRating,
-  formatSigned,
   formatTime,
   formatWeekdayDate,
 } from "@/lib/format";
+import type { DecisivePlayer } from "@/lib/stats/decisive";
 import {
   rate,
   type GameSession,
-  type SessionPlayerLine,
   type SessionSummary,
   type SessionTeamStats,
 } from "@/lib/stats/sessions";
@@ -51,6 +51,7 @@ function shareText(
   clubName: string,
   session: GameSession,
   summary: SessionSummary,
+  decisive: DecisivePlayer | null,
   teamStats: SessionTeamStats | null,
 ): string {
   const lines = [
@@ -58,6 +59,7 @@ function shareText(
     `${recordLabel(session)} · ${session.record.goalsFor} gols pró, ${session.record.goalsAgainst} contra`,
   ];
   if (summary.mvp) lines.push(`MVP da noite: ${summary.mvp.playerName}`);
+  if (decisive) lines.push(`Decisivo da noite: ${decisive.playerName} (${decisiveOutcome(decisive)})`);
   if (summary.topScorer) lines.push(`Artilheiro: ${summary.topScorer.playerName} (${summary.topScorer.goals})`);
   if (teamStats) {
     const { club } = teamStats;
@@ -87,15 +89,25 @@ interface Highlight {
   detail: string;
   href?: string;
   tone?: "primary" | "muted" | "loss";
+  /** Borda verde: o destaque que mais pesa depois do MVP. */
+  featured?: boolean;
 }
 
 function buildHighlights(
-  session: GameSession,
   summary: SessionSummary,
-  profile: (line: SessionPlayerLine) => string,
+  decisive: DecisivePlayer | null,
+  profile: (line: { playerId: string }) => string,
 ): Highlight[] {
-  const { record } = session;
   const highlights: Highlight[] = [];
+  if (decisive) {
+    highlights.push({
+      label: "Decisivo da noite",
+      value: decisive.playerName,
+      detail: `${decisiveOutcome(decisive)} · ${plural(decisive.points, "ponto", "pontos")}`,
+      href: profile(decisive),
+      featured: true,
+    });
+  }
   if (summary.topScorer) {
     highlights.push({
       label: "Artilheiro",
@@ -112,12 +124,6 @@ function buildHighlights(
       href: profile(summary.topAssister),
     });
   }
-  highlights.push({
-    label: "Saldo",
-    value: formatSigned(record.goalsFor - record.goalsAgainst),
-    detail: `${record.goalsFor} feitos, ${record.goalsAgainst} sofridos`,
-    tone: "muted",
-  });
   const sharpest = [...summary.players]
     .filter((line) => line.shots >= MIN_SHOTS_FOR_CONVERSION && line.goals > 0)
     .sort((a, b) => b.goals / b.shots - a.goals / a.shots || b.goals - a.goals)[0];
@@ -168,12 +174,12 @@ function RateCell({ made, attempts }: { made: number; attempts: number }) {
 
 export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]/sessions/[sessionId]">) {
   const { clubId, sessionId } = await params;
-  const { club, session, summary, teamStats } = await loadSession(clubId, sessionId);
+  const { club, session, summary, decisive, teamStats } = await loadSession(clubId, sessionId);
   const { record } = session;
   const games = session.matches.length;
   const pointsRate = ((record.wins * 3 + record.draws) / (games * 3)) * 100;
-  const profile = (line: SessionPlayerLine) => `/clubs/${club.id}/players/${line.playerId}`;
-  const highlights = buildHighlights(session, summary, profile);
+  const profile = (line: { playerId: string }) => `/clubs/${club.id}/players/${line.playerId}`;
+  const highlights = buildHighlights(summary, decisive, profile);
 
   return (
     <div className="space-y-8">
@@ -234,7 +240,7 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
                 <span className={cn("text-sm", DETAIL_TONES[highlight.tone ?? "primary"])}>{highlight.detail}</span>
               </>
             );
-            const className = "flex min-w-0 flex-col gap-1 border bg-card p-4";
+            const className = cn("flex min-w-0 flex-col gap-1 border bg-card p-4", highlight.featured && "border-primary");
             return highlight.href ? (
               <Link key={highlight.label} href={highlight.href} className={cn(className, "transition-colors hover:bg-surface")}>
                 {content}
@@ -354,7 +360,7 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <ShareButton
-          text={shareText(club.name, session, summary, teamStats)}
+          text={shareText(club.name, session, summary, decisive, teamStats)}
           title={`${club.name} · resumo da noite`}
           label="Mandar no grupo"
           className="w-full sm:w-auto"

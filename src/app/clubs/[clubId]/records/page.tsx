@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { AssistLinks } from "@/components/records/AssistLinks";
 import { ClutchSection } from "@/components/records/ClutchSection";
+import { DecisiveTable } from "@/components/records/Decisive";
 import { ImpactTable } from "@/components/records/ImpactTable";
 import { NightCurve } from "@/components/records/NightCurve";
 import { PairsTable } from "@/components/records/PairsTable";
@@ -15,6 +16,7 @@ import { listAllClubMatches, listClubPlayerMatchStats } from "@/lib/db/matches.r
 import { listPlayersByClub } from "@/lib/db/players.repository";
 import { formatDateTime, formatInteger, formatRating } from "@/lib/format";
 import { computeClutch } from "@/lib/stats/clutch";
+import { computeDecisive } from "@/lib/stats/decisive";
 import { computeImpact, MIN_IMPACT_GAMES } from "@/lib/stats/impact";
 import { computeNightCurve } from "@/lib/stats/night-curve";
 import { computeAssistLinks, computePairs } from "@/lib/stats/partnerships";
@@ -97,7 +99,7 @@ export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clu
       href: `/clubs/${club.id}/awards`,
       icon: AwardIcon,
       label: "Prêmios do mês",
-      detail: "Bola de Ouro, artilheiro, garçom, muralha e bagre",
+      detail: "Bola de Ouro, decisivo, artilheiro, garçom, muralha e bagre",
     },
   ];
 
@@ -127,6 +129,25 @@ export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clu
           ))}
         </nav>
       </div>
+
+      <section id="decisivos" className="scroll-mt-24 space-y-6">
+        <div>
+          <SectionHeading
+            title="O cara decisivo"
+            description="Pontos que o time não teria sem os gols e as assistências de cada um: gol no 2×1 vale a vitória, gol no 5×0 não muda nada. A EA não informa a ordem dos gols, então a conta tira de uma vez tudo em que ele participou."
+          />
+          <DecisiveTable clubId={club.id} players={computeDecisive(matches, stats)} />
+        </div>
+        <div className="space-y-3">
+          <div>
+            <h3 className="font-display text-lg font-bold tracking-[0.06em] uppercase">Nos jogos apertados</h3>
+            <p className="text-xs text-muted-foreground">
+              Partidas decididas por até 1 gol (empates incluídos) e quem cresce nelas pela nota.
+            </p>
+          </div>
+          <ClutchSection clubId={club.id} clutch={computeClutch(matches, stats)} />
+        </div>
+      </section>
 
       <section>
         <SectionHeading title="Recordes do clube" />
@@ -202,14 +223,6 @@ export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clu
           description={`Aproveitamento do time com e sem cada jogador em campo. A diferença, em pontos, aparece quando há ${MIN_IMPACT_GAMES}+ jogos dos dois lados.`}
         />
         <ImpactTable clubId={club.id} impacts={computeImpact(matches, stats, players)} />
-      </section>
-
-      <section>
-        <SectionHeading
-          title="Jogos decisivos"
-          description="Partidas decididas por até 1 gol (empates incluídos) e quem cresce nelas."
-        />
-        <ClutchSection clubId={club.id} clutch={computeClutch(matches, stats)} />
       </section>
 
       <section>
