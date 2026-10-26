@@ -8,11 +8,12 @@ import { rate, recordSlice, type RecordSlice } from "./sessions";
  * Duelo entre dois jogadores do mesmo clube.
  *
  * "Juntos": só as partidas em que os dois estavam em campo, então os totais
- * são comparáveis (mesmo jogo, mesmo adversário). "Geral": média por jogo em
- * todas as partidas salvas de cada um, para quem quase não jogou junto.
+ * são comparáveis (mesmo jogo, mesmo adversário). "Total": tudo o que cada um
+ * fez em todas as partidas salvas (quem jogou mais leva vantagem). "Geral":
+ * média por jogo nessas mesmas partidas, para quem quase não jogou junto.
  */
 
-export const VERSUS_SCOPES = ["juntos", "geral"] as const;
+export const VERSUS_SCOPES = ["juntos", "total", "geral"] as const;
 export type VersusScope = (typeof VERSUS_SCOPES)[number];
 
 export type DuelFormat = "integer" | "decimal" | "percent";
@@ -116,9 +117,10 @@ function statsByMatch(
 
 function duelRows(a: Totals, b: Totals, scope: VersusScope, trackedHint: string | undefined): DuelRow[] {
   // No geral, tudo vira média por jogo (pré-assistências: por jogo com o dado).
+  const perGame = scope === "geral";
   const value = (totals: Totals, total: number, games = totals.games) =>
-    scope === "juntos" ? total : games > 0 ? total / games : null;
-  const format: DuelFormat = scope === "juntos" ? "integer" : "decimal";
+    !perGame ? total : games > 0 ? total / games : null;
+  const format: DuelFormat = perGame ? "decimal" : "integer";
   const tracked = (totals: Totals) =>
     totals.trackedGames > 0 ? value(totals, totals.secondAssists, totals.trackedGames) : null;
   const row = (label: string, of: (totals: Totals) => number | null, extra: Partial<DuelRow> = {}): DuelRow => ({

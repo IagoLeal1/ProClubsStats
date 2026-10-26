@@ -57,18 +57,20 @@ interface DuelCardProps {
   a: Player;
   b: Player;
   duel: Duel;
-  /** Links das duas abas (juntos / geral); null quando a aba não existe. */
-  scopeHrefs: { juntos: string | null; geral: string };
+  /** Links das abas; `juntos` é null quando os dois nunca jogaram juntos. */
+  scopeHrefs: { juntos: string | null; total: string; geral: string };
 }
 
 /** O card do duelo: placar de estatísticas vencidas e as sete linhas lado a lado. */
 export function DuelCard({ a, b, duel, scopeHrefs }: DuelCardProps) {
   const { score } = duel;
   const leader: Side = score.a > score.b ? "a" : score.b > score.a ? "b" : null;
-  const caption =
-    duel.scope === "juntos"
-      ? `Nos ${duel.games.a} jogos em que os dois estavam em campo`
-      : `Média por jogo: ${duel.games.a} jogos de ${a.name}, ${duel.games.b} de ${b.name}`;
+  const games = `${duel.games.a} jogos de ${a.name}, ${duel.games.b} de ${b.name}`;
+  const caption = {
+    juntos: `Nos ${duel.games.a} jogos em que os dois estavam em campo`,
+    total: `Somando todas as partidas salvas: ${games}. Quem jogou mais leva vantagem.`,
+    geral: `Média por jogo: ${games}`,
+  }[duel.scope];
   const hints = [...new Set(duel.rows.flatMap((row) => (row.hint ? [`${row.label.toLowerCase()} ${row.hint}`] : [])))];
 
   return (
@@ -76,7 +78,7 @@ export function DuelCard({ a, b, duel, scopeHrefs }: DuelCardProps) {
       <div className="space-y-6 px-5 pt-6 pb-6 sm:px-8 sm:pt-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="kicker text-primary">Duelo</span>
-          <nav aria-label="Como comparar" className="flex gap-1.5">
+          <nav aria-label="Como comparar" className="flex flex-wrap gap-1.5">
             {scopeHrefs.juntos ? (
               <ScopeLink href={scopeHrefs.juntos} active={duel.scope === "juntos"}>
                 Jogando juntos
@@ -86,6 +88,9 @@ export function DuelCard({ a, b, duel, scopeHrefs }: DuelCardProps) {
                 Nunca jogaram juntos
               </span>
             )}
+            <ScopeLink href={scopeHrefs.total} active={duel.scope === "total"}>
+              Todos os jogos
+            </ScopeLink>
             <ScopeLink href={scopeHrefs.geral} active={duel.scope === "geral"}>
               Por jogo
             </ScopeLink>

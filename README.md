@@ -187,8 +187,9 @@ região, semântica de `winnerByDnf`.
   no 8×1, 0,375) e quem marca e quem dá a assistência levam esse valor. Destaque na visão
   geral, ranking em Recordes, "Decisivo da noite", "Decisivo do mês" e selo no perfil.
 - **Duelo x1** (`/clubs/[clubId]/players/[a]/vs/[b]`): gols, assistências, pré-assistências,
-  passes certos e errados, conversão e desarmes lado a lado, nos jogos em que os dois estavam
-  em campo (ou por jogo, no geral), com placar de estatísticas vencidas, campanha dos dois
+  passes certos e errados, conversão e desarmes lado a lado, em três abas: jogando juntos
+  (só os jogos com os dois em campo), todos os jogos salvos (totais) e por jogo (médias), com
+  placar de estatísticas vencidas, campanha dos dois
   juntos e com só um deles, e card de prévia para o WhatsApp.
 - **Rei do x1** (`/clubs/[clubId]/players/x1`): todos contra todos no elenco com o mesmo duelo
   (mínimo de 5 jogos juntos), em tabela de campeonato (3 pontos por vitória, 1 por empate,

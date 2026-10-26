@@ -45,7 +45,13 @@ export default async function Image({
     (
       <OgFrame clubName={club.name} crest={crest}>
         <div style={{ display: "flex", ...OG_KICKER, fontSize: 28, color: OG_COLORS.primary }}>
-          {duel.scope === "juntos" ? `Duelo · nos ${duel.games.a} jogos juntos` : "Duelo · média por jogo"}
+          {
+            {
+              juntos: `Duelo · nos ${duel.games.a} jogos juntos`,
+              total: "Duelo · todas as partidas salvas",
+              geral: "Duelo · média por jogo",
+            }[duel.scope]
+          }
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, marginTop: 10 }}>
           <div style={{ display: "flex", flex: 1, ...OG_FIGURE, fontSize: nameA.fontSize, color: color(score.a, score.b) }}>

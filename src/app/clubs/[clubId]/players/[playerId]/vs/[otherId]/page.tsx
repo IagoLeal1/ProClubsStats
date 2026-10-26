@@ -36,7 +36,11 @@ export async function generateMetadata({
 
 /** Texto que acompanha o link ao compartilhar no WhatsApp. */
 function shareText(a: Player, b: Player, duel: Duel): string {
-  const scope = duel.scope === "juntos" ? `nos ${duel.games.a} jogos juntos` : "média por jogo";
+  const scope = {
+    juntos: `nos ${duel.games.a} jogos juntos`,
+    total: "somando todas as partidas salvas",
+    geral: "média por jogo",
+  }[duel.scope];
   return [
     `⚽ Duelo: ${a.name} x ${b.name}`,
     `${a.name} ${duel.score.a} × ${duel.score.b} ${b.name} (${scope})`,
@@ -127,7 +131,7 @@ export default async function VersusPage({
         players={pickerPlayers}
         aId={a.id}
         bId={b.id}
-        query={duel.scope === "geral" ? "?escopo=geral" : ""}
+        query={duel.scope === "juntos" ? "" : `?escopo=${duel.scope}`}
       />
 
       <div className="space-y-3">
@@ -135,7 +139,11 @@ export default async function VersusPage({
           a={a}
           b={b}
           duel={duel}
-          scopeHrefs={{ juntos: together.both ? base : null, geral: `${base}?escopo=geral` }}
+          scopeHrefs={{
+            juntos: together.both ? base : null,
+            total: `${base}?escopo=total`,
+            geral: `${base}?escopo=geral`,
+          }}
         />
         <ShareButton
           text={shareText(a, b, duel)}
