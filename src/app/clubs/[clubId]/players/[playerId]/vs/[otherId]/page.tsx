@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { CrownIcon } from "lucide-react";
 import { z } from "zod";
 
 import { BackLink } from "@/components/layout/BackLink";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { ShareButton } from "@/components/layout/ShareButton";
 import { DuelCard } from "@/components/players/DuelCard";
+import { DuelLink } from "@/components/players/DuelLink";
 import { VersusPicker } from "@/components/players/VersusPicker";
 import { SliceStat } from "@/components/stats/SliceStat";
 import type { RecordSlice } from "@/lib/stats/sessions";
@@ -115,7 +117,10 @@ export default async function VersusPage({
 
   return (
     <div className="space-y-8">
-      <BackLink href={`/clubs/${club.id}/players`}>Jogadores</BackLink>
+      <div className="flex items-center justify-between gap-3">
+        <BackLink href={`/clubs/${club.id}/players`}>Jogadores</BackLink>
+        <DuelLink href={`/clubs/${club.id}/players/x1`} label="Rei do x1" icon={CrownIcon} variant="secondary" />
+      </div>
 
       <VersusPicker
         clubId={club.id}

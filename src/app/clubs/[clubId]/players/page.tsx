@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { UsersIcon } from "lucide-react";
+import { CrownIcon, UsersIcon } from "lucide-react";
 import { z } from "zod";
 
 import { EmptyState } from "@/components/layout/EmptyState";
@@ -70,7 +70,12 @@ export default async function ClubPlayersPage({
         title="Jogadores"
         description={`${players.length} jogadores · estatísticas da temporada no clube (EA) · seta = fase nos últimos jogos`}
         action={
-          duelA && duelB ? <DuelLink href={`${basePath}/${duelA.id}/vs/${duelB.id}`} label="Duelo x1" /> : undefined
+          <div className="flex flex-wrap gap-2">
+            <DuelLink href={`${basePath}/x1`} label="Rei do x1" icon={CrownIcon} />
+            {duelA && duelB && (
+              <DuelLink href={`${basePath}/${duelA.id}/vs/${duelB.id}`} label="Duelo x1" variant="secondary" />
+            )}
+          </div>
         }
       />
 

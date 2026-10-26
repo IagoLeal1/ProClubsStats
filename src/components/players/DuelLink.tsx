@@ -1,19 +1,31 @@
 import Link from "next/link";
-import { SwordsIcon } from "lucide-react";
+import { type LucideIcon, SwordsIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-/** Atalho para o duelo entre dois jogadores. */
-export function DuelLink({ href, label, className }: { href: string; label: string; className?: string }) {
+interface DuelLinkProps {
+  href: string;
+  label: string;
+  icon?: LucideIcon;
+  /** "secondary": contornado, para ficar ao lado de um botão principal. */
+  variant?: "primary" | "secondary";
+  className?: string;
+}
+
+/** Atalho para o x1 (duelo ou Rei do x1). */
+export function DuelLink({ href, label, icon: Icon = SwordsIcon, variant = "primary", className }: DuelLinkProps) {
   return (
     <Link
       href={href}
       className={cn(
-        "clip-slant inline-flex h-10 items-center gap-2 bg-primary px-5 font-display text-base font-extrabold tracking-[0.08em] text-primary-foreground uppercase transition-opacity hover:opacity-90",
+        "inline-flex h-10 items-center gap-2 px-5 font-display text-base font-extrabold tracking-[0.08em] uppercase transition-colors",
+        variant === "primary"
+          ? "clip-slant bg-primary text-primary-foreground hover:opacity-90"
+          : "border border-input hover:border-primary hover:text-primary",
         className,
       )}
     >
-      <SwordsIcon className="size-4" aria-hidden />
+      <Icon className="size-4" aria-hidden />
       {label}
     </Link>
   );

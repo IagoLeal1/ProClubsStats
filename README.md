@@ -190,6 +190,9 @@ região, semântica de `winnerByDnf`.
   passes certos e errados, conversão e desarmes lado a lado, nos jogos em que os dois estavam
   em campo (ou por jogo, no geral), com placar de estatísticas vencidas, campanha dos dois
   juntos e com só um deles, e card de prévia para o WhatsApp.
+- **Rei do x1** (`/clubs/[clubId]/players/x1`): todos contra todos no elenco com o mesmo duelo
+  (mínimo de 5 jogos juntos), em tabela de campeonato (3 pontos por vitória, 1 por empate,
+  saldo de estatísticas vencidas) e grade com o placar de cada confronto.
 - **Pré-assistências e interceptações**: lidas dos contadores de eventos da EA desde
   26/10/2026 (ver [`docs/ea-endpoints.md`](docs/ea-endpoints.md)). Aparecem na partida, no
   resumo da noite (Armador e Ladrão de bola), nos prêmios do mês, nos recordes e no perfil.

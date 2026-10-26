@@ -168,67 +168,97 @@ export interface VersusResult {
   together: Together;
 }
 
+interface PairScan {
+  both: Match[];
+  onlyA: Match[];
+  onlyB: Match[];
+  higherRating: DuelTally & { ties: number };
+  together: { a: Totals; b: Totals };
+  overall: { a: Totals; b: Totals };
+}
+
+/** Uma passada pelas partidas válidas separando juntos, só um e só o outro. */
+function scanPair(aId: string, bId: string, valid: Match[], stats: ClubPlayerMatchStat[]): PairScan {
+  const validById = new Map(valid.map((match) => [match.id, match]));
+  const statsA = statsByMatch(aId, validById, stats);
+  const statsB = statsByMatch(bId, validById, stats);
+  const scan: PairScan = {
+    both: [],
+    onlyA: [],
+    onlyB: [],
+    higherRating: { a: 0, b: 0, ties: 0 },
+    together: { a: emptyTotals(), b: emptyTotals() },
+    overall: { a: emptyTotals(), b: emptyTotals() },
+  };
+
+  for (const match of valid) {
+    const statA = statsA.get(match.id);
+    const statB = statsB.get(match.id);
+    if (statA) add(scan.overall.a, statA);
+    if (statB) add(scan.overall.b, statB);
+    if (statA && statB) {
+      scan.both.push(match);
+      add(scan.together.a, statA);
+      add(scan.together.b, statB);
+      const ratingA = statA.stats.rating;
+      const ratingB = statB.stats.rating;
+      if (ratingA !== null && ratingB !== null) {
+        if (ratingA > ratingB) scan.higherRating.a++;
+        else if (ratingB > ratingA) scan.higherRating.b++;
+        else scan.higherRating.ties++;
+      }
+    } else if (statA) scan.onlyA.push(match);
+    else if (statB) scan.onlyB.push(match);
+  }
+  return scan;
+}
+
+interface DuelOptions {
+  scope: VersusScope;
+  trackedSince: string | null;
+}
+
+function buildDuel(scan: PairScan, options: DuelOptions): Duel {
+  // Sem nenhum jogo juntos, o duelo só faz sentido no geral.
+  const scope = options.scope === "juntos" && scan.both.length === 0 ? "geral" : options.scope;
+  const totals = scope === "juntos" ? scan.together : scan.overall;
+  const trackedHint = options.trackedSince ? `desde ${options.trackedSince}` : undefined;
+  const rows = duelRows(totals.a, totals.b, scope, trackedHint);
+  return { scope, games: { a: totals.a.games, b: totals.b.games }, rows, score: tally(rows) };
+}
+
+const validMatches = (matches: Match[]) => matches.filter((match) => !match.decidedByDnf);
+
+/** Só o duelo (sem o bloco "juntos"), para comparar muitos pares de uma vez. */
+export function computeDuel(
+  aId: string,
+  bId: string,
+  matches: Match[],
+  stats: ClubPlayerMatchStat[],
+  options: DuelOptions,
+): Duel {
+  return buildDuel(scanPair(aId, bId, validMatches(matches), stats), options);
+}
+
 export function compareTwoPlayers(
   aId: string,
   bId: string,
   matches: Match[],
   stats: ClubPlayerMatchStat[],
-  options: { scope: VersusScope; trackedSince: string | null },
+  options: DuelOptions,
 ): VersusResult {
-  const valid = matches.filter((match) => !match.decidedByDnf);
-  const validById = new Map(valid.map((match) => [match.id, match]));
-  const statsA = statsByMatch(aId, validById, stats);
-  const statsB = statsByMatch(bId, validById, stats);
-
-  const both: Match[] = [];
-  const onlyA: Match[] = [];
-  const onlyB: Match[] = [];
-  const higherRating = { a: 0, b: 0, ties: 0 };
-  const together = { a: emptyTotals(), b: emptyTotals() };
-  const overall = { a: emptyTotals(), b: emptyTotals() };
-
-  for (const match of valid) {
-    const statA = statsA.get(match.id);
-    const statB = statsB.get(match.id);
-    if (statA) add(overall.a, statA);
-    if (statB) add(overall.b, statB);
-    if (statA && statB) {
-      both.push(match);
-      add(together.a, statA);
-      add(together.b, statB);
-      const ratingA = statA.stats.rating;
-      const ratingB = statB.stats.rating;
-      if (ratingA !== null && ratingB !== null) {
-        if (ratingA > ratingB) higherRating.a++;
-        else if (ratingB > ratingA) higherRating.b++;
-        else higherRating.ties++;
-      }
-    } else if (statA) onlyA.push(match);
-    else if (statB) onlyB.push(match);
-  }
-
-  // Sem nenhum jogo juntos, o duelo só faz sentido no geral.
-  const scope = options.scope === "juntos" && both.length === 0 ? "geral" : options.scope;
-  const totals = scope === "juntos" ? together : overall;
-  const trackedHint = options.trackedSince ? `desde ${options.trackedSince}` : undefined;
-  const rows = duelRows(totals.a, totals.b, scope, trackedHint);
-
+  const scan = scanPair(aId, bId, validMatches(matches), stats);
   const { links } = computeAssistLinks(matches, stats);
   const assists = (from: string, to: string) =>
     links.find((link) => link.fromId === from && link.toId === to)?.assists ?? 0;
 
   return {
-    duel: {
-      scope,
-      games: { a: totals.a.games, b: totals.b.games },
-      rows,
-      score: tally(rows),
-    },
+    duel: buildDuel(scan, options),
     together: {
-      both: recordSlice(both),
-      onlyA: recordSlice(onlyA),
-      onlyB: recordSlice(onlyB),
-      higherRating,
+      both: recordSlice(scan.both),
+      onlyA: recordSlice(scan.onlyA),
+      onlyB: recordSlice(scan.onlyB),
+      higherRating: scan.higherRating,
       assistsAToB: assists(aId, bId),
       assistsBToA: assists(bId, aId),
     },
