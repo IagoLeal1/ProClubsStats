@@ -12,18 +12,26 @@ import {
 import type { DecisivePlayer } from "@/lib/stats/decisive";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+const pointsFormat = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const perGameFormat = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** Ex.: "garantiu 3 vitórias e salvou 1 empate". */
+/** Ex.: "63,1". */
+export const formatDecisivePoints = (points: number) => pointsFormat.format(points);
+
+/** Ex.: "gol ou assistência em 3 vitórias e 1 empate". */
 export function decisiveOutcome(player: DecisivePlayer): string {
-  const parts = [
-    player.winsSecured > 0 && `garantiu ${plural(player.winsSecured, "vitória", "vitórias")}`,
-    player.drawsSaved > 0 && `salvou ${plural(player.drawsSaved, "empate", "empates")}`,
+  const games = [
+    player.wins > 0 && plural(player.wins, "vitória", "vitórias"),
+    player.draws > 0 && plural(player.draws, "empate", "empates"),
   ].filter((part): part is string => Boolean(part));
-  return parts.join(" e ");
+  return `gol ou assistência em ${games.join(" e ")}`;
 }
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** Explicação curta da conta, repetida onde o número aparece. */
+export const DECISIVE_RULE =
+  "Cada gol vale a parte dele nos pontos do jogo: no 2×1 vale 1,5, no 2×0 vale 1, no 8×1 só 0,4. Quem marca e quem dá a assistência levam o valor do gol.";
 
 /** Destaque da visão geral: o mais decisivo do histórico e quem vem atrás. */
 export function DecisiveSpotlight({ clubId, players }: { clubId: string; players: DecisivePlayer[] }) {
@@ -44,12 +52,11 @@ export function DecisiveSpotlight({ clubId, players }: { clubId: string; players
         <span className="kicker">O cara decisivo</span>
         <span className="figure text-5xl break-all uppercase sm:text-7xl">{leader.playerName}</span>
         <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-          <span className="figure text-4xl tabular">{leader.points}</span>
-          <span className="font-semibold">pontos que o time não teria sem os gols e as assistências dele</span>
+          <span className="figure text-4xl tabular">{formatDecisivePoints(leader.points)}</span>
+          <span className="font-semibold">pontos decisivos em {plural(leader.games, "jogo", "jogos")}</span>
         </p>
         <span className="text-sm font-medium">
-          {capitalize(decisiveOutcome(leader))} em {plural(leader.games, "jogo", "jogos")} ·{" "}
-          {leader.goals}G {leader.assists}A que mudaram o resultado
+          {capitalize(decisiveOutcome(leader))} · {leader.goals}G {leader.assists}A que valeram pontos
         </span>
       </Link>
 
@@ -67,7 +74,7 @@ export function DecisiveSpotlight({ clubId, players }: { clubId: string; players
                   {player.playerName}
                 </Link>
                 <span className="shrink-0 text-sm text-muted-foreground">
-                  <span className="figure text-2xl text-foreground tabular">{player.points}</span> pts
+                  <span className="figure text-2xl text-foreground tabular">{formatDecisivePoints(player.points)}</span> pts
                 </span>
               </li>
             ))}
@@ -84,11 +91,33 @@ export function DecisiveSpotlight({ clubId, players }: { clubId: string; players
   );
 }
 
-/** Ranking completo de Recordes: só quem já mudou algum resultado. */
+/** Faixa com borda verde para o decisivo de um período (noite, mês). */
+export function DecisiveStrip({ label, href, player }: { label: string; href: string; player: DecisivePlayer }) {
+  return (
+    <Link
+      href={href}
+      className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border border-primary bg-card p-5 transition-colors hover:bg-surface sm:px-8"
+    >
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="kicker text-primary">{label}</span>
+        <span className="figure text-4xl break-all uppercase sm:text-5xl">{player.playerName}</span>
+        <span className="text-sm text-muted-foreground">
+          {capitalize(decisiveOutcome(player))} · {player.goals}G {player.assists}A que valeram pontos
+        </span>
+      </span>
+      <span className="shrink-0 text-sm text-muted-foreground">
+        <span className="figure text-5xl text-primary tabular">{formatDecisivePoints(player.points)}</span> pontos
+        decisivos
+      </span>
+    </Link>
+  );
+}
+
+/** Ranking completo de Recordes: só quem já fez gol ou deu assistência que valeu ponto. */
 export function DecisiveTable({ clubId, players }: { clubId: string; players: DecisivePlayer[] }) {
   const ranked = players.filter((player) => player.points > 0);
   if (ranked.length === 0) {
-    return <p className="text-sm text-muted-foreground">Ninguém mudou um resultado com gol ou assistência ainda.</p>;
+    return <p className="text-sm text-muted-foreground">Ninguém fez gol ou deu assistência que valeu ponto ainda.</p>;
   }
 
   return (
@@ -97,16 +126,16 @@ export function DecisiveTable({ clubId, players }: { clubId: string; players: De
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className="pl-4">Jogador</TableHead>
-            <TableHead className="text-right" title="Pontos que o time não teria sem os gols e as assistências dele">
+            <TableHead className="text-right" title="Soma do valor dos gols em que ele marcou ou deu a assistência">
               Pontos
             </TableHead>
             <TableHead className="text-right max-sm:hidden" title="Pontos decisivos por jogo">
               Por jogo
             </TableHead>
-            <TableHead className="text-right" title="Vitórias que, sem ele, seriam empate ou derrota">
+            <TableHead className="text-right" title="Vitórias em que ele marcou ou deu assistência">
               V
             </TableHead>
-            <TableHead className="pr-4 text-right" title="Empates que, sem ele, seriam derrota">
+            <TableHead className="pr-4 text-right" title="Empates em que ele marcou ou deu assistência">
               E
             </TableHead>
           </TableRow>
@@ -122,28 +151,19 @@ export function DecisiveTable({ clubId, players }: { clubId: string; players: De
                   {player.playerName}
                 </Link>
                 <span className="text-xs text-muted-foreground">
-                  {player.goals}G {player.assists}A decisivos · {plural(player.games, "jogo", "jogos")}
+                  {player.goals}G {player.assists}A que valeram pontos · {plural(player.games, "jogo", "jogos")}
                 </span>
               </TableCell>
               <TableCell className="text-right">
                 <span className={index === 0 ? "figure text-2xl text-primary tabular" : "figure text-2xl tabular"}>
-                  {player.points}
+                  {formatDecisivePoints(player.points)}
                 </span>
               </TableCell>
               <TableCell className="text-right tabular max-sm:hidden">
                 {perGameFormat.format(player.points / player.games)}
               </TableCell>
-              <TableCell
-                className="text-right tabular"
-                title={
-                  player.lossesTurned > 0
-                    ? `${plural(player.lossesTurned, "seria derrota", "seriam derrota")} sem ele`
-                    : undefined
-                }
-              >
-                {player.winsSecured}
-              </TableCell>
-              <TableCell className="pr-4 text-right tabular">{player.drawsSaved}</TableCell>
+              <TableCell className="text-right tabular">{player.wins}</TableCell>
+              <TableCell className="pr-4 text-right tabular">{player.draws}</TableCell>
             </TableRow>
           ))}
         </TableBody>

@@ -9,7 +9,7 @@ import { MatchCard, MatchList } from "@/components/matches/MatchCard";
 import { MatchResult } from "@/components/matches/MatchResult";
 import { MatchTeamStats } from "@/components/matches/MatchTeamStats";
 import { RatingBadge } from "@/components/players/RatingBadge";
-import { decisiveOutcome } from "@/components/records/Decisive";
+import { DecisiveStrip, formatDecisivePoints } from "@/components/records/Decisive";
 import {
   Table,
   TableBody,
@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  formatInteger,
   formatPercent,
   formatRating,
   formatTime,
@@ -28,6 +29,7 @@ import type { DecisivePlayer } from "@/lib/stats/decisive";
 import {
   rate,
   type GameSession,
+  type SessionPlayerLine,
   type SessionSummary,
   type SessionTeamStats,
 } from "@/lib/stats/sessions";
@@ -59,7 +61,12 @@ function shareText(
     `${recordLabel(session)} · ${session.record.goalsFor} gols pró, ${session.record.goalsAgainst} contra`,
   ];
   if (summary.mvp) lines.push(`MVP da noite: ${summary.mvp.playerName}`);
-  if (decisive) lines.push(`Decisivo da noite: ${decisive.playerName} (${decisiveOutcome(decisive)})`);
+  if (decisive) {
+    lines.push(`Decisivo da noite: ${decisive.playerName} (${formatDecisivePoints(decisive.points)} pontos decisivos)`);
+  }
+  if (summary.topPlaymaker?.secondAssists) {
+    lines.push(`Armador: ${summary.topPlaymaker.playerName} (${summary.topPlaymaker.secondAssists} pré-assist.)`);
+  }
   if (summary.topScorer) lines.push(`Artilheiro: ${summary.topScorer.playerName} (${summary.topScorer.goals})`);
   if (teamStats) {
     const { club } = teamStats;
@@ -89,25 +96,25 @@ interface Highlight {
   detail: string;
   href?: string;
   tone?: "primary" | "muted" | "loss";
-  /** Borda verde: o destaque que mais pesa depois do MVP. */
-  featured?: boolean;
+}
+
+/** Quem mais tem de um número na noite (só quem tem mais que zero). */
+function mostOf(
+  lines: SessionPlayerLine[],
+  value: (line: SessionPlayerLine) => number | null,
+): SessionPlayerLine | null {
+  return (
+    [...lines]
+      .filter((line) => (value(line) ?? 0) > 0)
+      .sort((a, b) => (value(b) ?? 0) - (value(a) ?? 0) || a.games - b.games)[0] ?? null
+  );
 }
 
 function buildHighlights(
   summary: SessionSummary,
-  decisive: DecisivePlayer | null,
   profile: (line: { playerId: string }) => string,
 ): Highlight[] {
   const highlights: Highlight[] = [];
-  if (decisive) {
-    highlights.push({
-      label: "Decisivo da noite",
-      value: decisive.playerName,
-      detail: `${decisiveOutcome(decisive)} · ${plural(decisive.points, "ponto", "pontos")}`,
-      href: profile(decisive),
-      featured: true,
-    });
-  }
   if (summary.topScorer) {
     highlights.push({
       label: "Artilheiro",
@@ -122,6 +129,32 @@ function buildHighlights(
       value: summary.topAssister.playerName,
       detail: plural(summary.topAssister.assists, "assistência", "assistências"),
       href: profile(summary.topAssister),
+    });
+  }
+  if (summary.topPlaymaker?.secondAssists) {
+    highlights.push({
+      label: "Armador",
+      value: summary.topPlaymaker.playerName,
+      detail: plural(summary.topPlaymaker.secondAssists, "pré-assistência", "pré-assistências"),
+      href: profile(summary.topPlaymaker),
+    });
+  }
+  const wall = mostOf(summary.players, (line) => line.tackles);
+  if (wall) {
+    highlights.push({
+      label: "Muralha",
+      value: wall.playerName,
+      detail: `${plural(wall.tackles, "desarme", "desarmes")} (${wall.tackles}/${wall.tackleAttempts})`,
+      href: profile(wall),
+    });
+  }
+  const thief = mostOf(summary.players, (line) => line.interceptions);
+  if (thief?.interceptions) {
+    highlights.push({
+      label: "Ladrão de bola",
+      value: thief.playerName,
+      detail: plural(thief.interceptions, "interceptação", "interceptações"),
+      href: profile(thief),
     });
   }
   const sharpest = [...summary.players]
@@ -179,7 +212,10 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
   const games = session.matches.length;
   const pointsRate = ((record.wins * 3 + record.draws) / (games * 3)) * 100;
   const profile = (line: { playerId: string }) => `/clubs/${club.id}/players/${line.playerId}`;
-  const highlights = buildHighlights(summary, decisive, profile);
+  const highlights = buildHighlights(summary, profile);
+  // 8 destaques cabem em duas linhas de 4; o resto, em linhas de 3.
+  const highlightColumns = highlights.length % 4 === 0 ? "lg:grid-cols-4" : "lg:grid-cols-3";
+  const tracked = summary.players.some((line) => line.secondAssists !== null);
 
   return (
     <div className="space-y-8">
@@ -231,7 +267,10 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
             </span>
           </Link>
         )}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        {decisive && (
+          <DecisiveStrip label="Decisivo da noite" href={profile(decisive)} player={decisive} />
+        )}
+        <div className={cn("grid grid-cols-2 gap-3", highlightColumns)}>
           {highlights.map((highlight) => {
             const content = (
               <>
@@ -240,7 +279,7 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
                 <span className={cn("text-sm", DETAIL_TONES[highlight.tone ?? "primary"])}>{highlight.detail}</span>
               </>
             );
-            const className = cn("flex min-w-0 flex-col gap-1 border bg-card p-4", highlight.featured && "border-primary");
+            const className = "flex min-w-0 flex-col gap-1 border bg-card p-4";
             return highlight.href ? (
               <Link key={highlight.label} href={highlight.href} className={cn(className, "transition-colors hover:bg-surface")}>
                 {content}
@@ -278,6 +317,16 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
                 <TableHead className="text-right">J</TableHead>
                 <TableHead className="text-right">G</TableHead>
                 <TableHead className="text-right">A</TableHead>
+                {tracked && (
+                  <TableHead className="text-right" title="Pré-assistências">
+                    PA
+                  </TableHead>
+                )}
+                {tracked && (
+                  <TableHead className="text-right" title="Interceptações">
+                    Int
+                  </TableHead>
+                )}
                 <TableHead className="text-right">MVP</TableHead>
                 <TableHead className="pr-4 text-right">Nota</TableHead>
               </TableRow>
@@ -293,6 +342,8 @@ export default async function SessionPage({ params }: PageProps<"/clubs/[clubId]
                   <TableCell className="text-right text-muted-foreground tabular">{line.games}</TableCell>
                   <TableCell className="text-right tabular">{line.goals}</TableCell>
                   <TableCell className="text-right tabular">{line.assists}</TableCell>
+                  {tracked && <TableCell className="text-right tabular">{formatInteger(line.secondAssists)}</TableCell>}
+                  {tracked && <TableCell className="text-right tabular">{formatInteger(line.interceptions)}</TableCell>}
                   <TableCell className="text-right tabular">{line.mvps}</TableCell>
                   <TableCell className="pr-4 text-right">
                     <RatingBadge rating={line.averageRating} />

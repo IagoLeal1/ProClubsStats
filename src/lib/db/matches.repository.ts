@@ -23,6 +23,7 @@ const MATCH_RESULTS: readonly MatchResult[] = ["W", "D", "L"];
 export type MatchInsert = TableInsert<"matches">;
 export type TeamStatsInsert = TableInsert<"match_team_stats">;
 export type PlayerMatchStatsInsert = TableInsert<"player_match_stats">;
+export type PlayerMatchEventsInsert = TableInsert<"player_match_events">;
 
 function mapMatchRow(row: TableRow<"matches">): Match {
   return {
@@ -55,6 +56,7 @@ function mapPlayerStatsValues(row: TableRow<"player_match_stats">): PlayerMatchS
     tackles: row.tackles,
     tackleAttempts: row.tackle_attempts,
     interceptions: row.interceptions,
+    secondAssists: row.second_assists,
     yellowCards: row.yellow_cards,
     redCards: row.red_cards,
     saves: row.saves,
@@ -264,5 +266,16 @@ export async function upsertPlayerMatchStats(rows: PlayerMatchStatsInsert[]): Pr
       .from("player_match_stats")
       .upsert(rows, { onConflict: "match_id,player_id" }),
     "salvar estatísticas individuais",
+  );
+}
+
+/** Contadores crus de cada jogador; regravar a mesma partida substitui os valores. */
+export async function upsertPlayerMatchEvents(rows: PlayerMatchEventsInsert[]): Promise<void> {
+  if (rows.length === 0) return;
+  assertOk(
+    await getDbAdmin()
+      .from("player_match_events")
+      .upsert(rows, { onConflict: "match_id,player_id" }),
+    "salvar contadores de eventos",
   );
 }

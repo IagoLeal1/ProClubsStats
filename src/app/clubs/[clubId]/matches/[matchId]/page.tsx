@@ -38,7 +38,7 @@ export default async function MatchDetailsPage({
       <section>
         <SectionHeading
           title="Jogadores utilizados"
-          description="★ = MVP da partida · cartões amarelos e interceptações ainda não são fornecidos pela EA."
+          description="★ = MVP da partida · PA = pré-assistências (o passe para quem deu a assistência) · Int = interceptações. “—” em partidas salvas antes de o site ler esses números da EA."
         />
         {match.players.length > 0 ? (
           <MatchPlayerStats clubId={club.id} players={match.players} />

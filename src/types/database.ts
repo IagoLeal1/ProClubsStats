@@ -101,11 +101,22 @@ type PlayerMatchStatsRow = {
   tackles: number;
   tackle_attempts: number;
   interceptions: number | null;
+  /** Pré-assistências. */
+  second_assists: number | null;
   yellow_cards: number | null;
   red_cards: number;
   saves: number;
   man_of_the_match: boolean;
   seconds_played: number | null;
+  created_at: string;
+};
+
+type PlayerMatchEventsRow = {
+  id: string;
+  match_id: string;
+  player_id: string;
+  /** {"código": quantidade} dos contadores match_event_aggregate_* da EA. */
+  counts: Record<string, number>;
   created_at: string;
 };
 
@@ -279,6 +290,7 @@ export type Database = {
         | "tackles"
         | "tackle_attempts"
         | "interceptions"
+        | "second_assists"
         | "yellow_cards"
         | "red_cards"
         | "saves"
@@ -294,6 +306,26 @@ export type Database = {
           },
           {
             foreignKeyName: "player_match_stats_player_id_fkey";
+            columns: ["player_id"];
+            isOneToOne: false;
+            referencedRelation: "players";
+            referencedColumns: ["id"];
+          },
+        ]
+      >;
+      player_match_events: TableDefinition<
+        PlayerMatchEventsRow,
+        "id" | "created_at",
+        [
+          {
+            foreignKeyName: "player_match_events_match_id_fkey";
+            columns: ["match_id"];
+            isOneToOne: false;
+            referencedRelation: "matches";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "player_match_events_player_id_fkey";
             columns: ["player_id"];
             isOneToOne: false;
             referencedRelation: "players";

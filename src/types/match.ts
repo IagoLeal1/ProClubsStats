@@ -32,8 +32,10 @@ export interface PlayerMatchStatsValues {
   passesCompleted: number;
   tackles: number;
   tackleAttempts: number;
-  /** Não disponível na resposta atual da EA. */
+  /** Dos contadores de eventos da EA; null em partidas salvas antes de 26/10/2026. */
   interceptions: number | null;
+  /** Pré-assistências (o passe para quem deu a assistência); null como interceptions. */
+  secondAssists: number | null;
   /** Não disponível na resposta atual da EA. */
   yellowCards: number | null;
   redCards: number;
@@ -46,6 +48,8 @@ export interface PlayerMatchStatsValues {
 export interface PlayerMatchSnapshot extends PlayerMatchStatsValues {
   eaPlayerId: string;
   name: string;
+  /** Contadores crus {código: quantidade}, guardados para decodificar depois. */
+  eventCounts: Record<string, number> | null;
 }
 
 export interface MatchOpponent {

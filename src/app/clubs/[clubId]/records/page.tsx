@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { AssistLinks } from "@/components/records/AssistLinks";
 import { ClutchSection } from "@/components/records/ClutchSection";
-import { DecisiveTable } from "@/components/records/Decisive";
+import { DECISIVE_RULE, DecisiveTable } from "@/components/records/Decisive";
 import { ImpactTable } from "@/components/records/ImpactTable";
 import { NightCurve } from "@/components/records/NightCurve";
 import { PairsTable } from "@/components/records/PairsTable";
@@ -134,7 +134,7 @@ export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clu
         <div>
           <SectionHeading
             title="O cara decisivo"
-            description="Pontos que o time não teria sem os gols e as assistências de cada um: gol no 2×1 vale a vitória, gol no 5×0 não muda nada. A EA não informa a ordem dos gols, então a conta tira de uma vez tudo em que ele participou."
+            description={`${DECISIVE_RULE} A EA não informa a ordem dos gols, então cada gol leva uma parte igual dos pontos do jogo.`}
           />
           <DecisiveTable clubId={club.id} players={computeDecisive(matches, stats)} />
         </div>
@@ -227,7 +227,7 @@ export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clu
 
       <section>
         <SectionHeading title="Recordes individuais" description="Melhores atuações numa única partida" />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <PerformanceList
             clubId={club.id}
             title="Mais gols"
@@ -238,6 +238,18 @@ export default async function ClubRecordsPage({ params }: PageProps<"/clubs/[clu
             clubId={club.id}
             title="Mais assistências"
             records={topPerformances(stats, matchesById, (stat) => stat.stats.assists)}
+            formatValue={formatInteger}
+          />
+          <PerformanceList
+            clubId={club.id}
+            title="Mais pré-assistências"
+            records={topPerformances(stats, matchesById, (stat) => stat.stats.secondAssists)}
+            formatValue={formatInteger}
+          />
+          <PerformanceList
+            clubId={club.id}
+            title="Mais interceptações"
+            records={topPerformances(stats, matchesById, (stat) => stat.stats.interceptions)}
             formatValue={formatInteger}
           />
           <PerformanceList

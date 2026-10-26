@@ -1,6 +1,7 @@
 import type { ClubPlayerMatchStat, Match } from "@/types/match";
 
 import { computeDecisive, topDecisive, type DecisivePlayer } from "./decisive";
+import { firstTrackedMatch } from "./tracked-events";
 import {
   byPerformance,
   groupByPeriod,
@@ -57,6 +58,12 @@ export interface MonthAwards {
   topAssister: PeriodPlayerLine | null;
   /** Mais desarmes. */
   wall: PeriodPlayerLine | null;
+  /** Mais pré-assistências. */
+  playmaker: PeriodPlayerLine | null;
+  /** Mais interceptações. */
+  thief: PeriodPlayerLine | null;
+  /** Primeira partida do mês com pré-assistências e interceptações (null: nenhuma). */
+  eventsTrackedSince: string | null;
   /** Pior nota média entre os mesmos elegíveis da Bola de Ouro. */
   flop: PeriodPlayerLine | null;
   /** Quem mais garantiu pontos com gols e assistências. */
@@ -67,11 +74,12 @@ export interface MonthAwards {
 }
 
 /** Quem mais tem de um número; empate fica com quem jogou menos. */
-function mostOf(lines: PeriodPlayerLine[], value: (line: PeriodPlayerLine) => number): PeriodPlayerLine | null {
-  return (
-    [...lines].filter((line) => value(line) > 0).sort((a, b) => value(b) - value(a) || a.games - b.games)[0] ??
-    null
-  );
+function mostOf(
+  lines: PeriodPlayerLine[],
+  value: (line: PeriodPlayerLine) => number | null,
+): PeriodPlayerLine | null {
+  const of = (line: PeriodPlayerLine) => value(line) ?? 0;
+  return [...lines].filter((line) => of(line) > 0).sort((a, b) => of(b) - of(a) || a.games - b.games)[0] ?? null;
 }
 
 export function pickMonthAwards(month: GameMonth, stats: ClubPlayerMatchStat[]): MonthAwards {
@@ -87,6 +95,9 @@ export function pickMonthAwards(month: GameMonth, stats: ClubPlayerMatchStat[]):
     topScorer: mostOf(players, (line) => line.goals),
     topAssister: mostOf(players, (line) => line.assists),
     wall: mostOf(players, (line) => line.tackles),
+    playmaker: mostOf(players, (line) => line.secondAssists),
+    thief: mostOf(players, (line) => line.interceptions),
+    eventsTrackedSince: firstTrackedMatch(month.matches, stats),
     flop,
     decisive: topDecisive(computeDecisive(month.matches, stats)),
     minGames,

@@ -6,7 +6,7 @@ import { PeriodNav } from "@/components/layout/PeriodNav";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { ShareButton } from "@/components/layout/ShareButton";
 import { RatingBadge } from "@/components/players/RatingBadge";
-import { decisiveOutcome } from "@/components/records/Decisive";
+import { DecisiveStrip, formatDecisivePoints } from "@/components/records/Decisive";
 import {
   Table,
   TableBody,
@@ -24,6 +24,7 @@ import { loadMonth } from "./load-month";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+const dayMonth = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" });
 
 export async function generateMetadata({
   params,
@@ -55,7 +56,17 @@ function awardCards(awards: MonthAwards): AwardCard[] {
       line: awards.topAssister,
       detail: (line) => plural(line.assists, "assistência", "assistências"),
     },
+    {
+      label: "Armador",
+      line: awards.playmaker,
+      detail: (line) => plural(line.secondAssists ?? 0, "pré-assistência", "pré-assistências"),
+    },
     { label: "Muralha", line: awards.wall, detail: (line) => plural(line.tackles, "desarme", "desarmes") },
+    {
+      label: "Ladrão de bola",
+      line: awards.thief,
+      detail: (line) => plural(line.interceptions ?? 0, "interceptação", "interceptações"),
+    },
     {
       label: "Bagre do mês",
       line: awards.flop,
@@ -72,7 +83,9 @@ function shareText(clubName: string, month: GameMonth, awards: MonthAwards): str
     lines.push(`Bola de Ouro: ${awards.goldenBall.playerName} (nota ${formatRating(awards.goldenBall.averageRating)})`);
   }
   if (awards.decisive) {
-    lines.push(`Decisivo do mês: ${awards.decisive.playerName} (${decisiveOutcome(awards.decisive)})`);
+    lines.push(
+      `Decisivo do mês: ${awards.decisive.playerName} (${formatDecisivePoints(awards.decisive.points)} pontos decisivos)`,
+    );
   }
   for (const card of awardCards(awards)) {
     if (card.line) lines.push(`${card.label}: ${card.line.playerName} (${card.detail(card.line)})`);
@@ -129,25 +142,14 @@ export default async function MonthAwardsPage({ params }: PageProps<"/clubs/[clu
       )}
 
       {decisive && (
-        <Link
+        <DecisiveStrip
+          label="Decisivo do mês"
           href={`/clubs/${club.id}/players/${decisive.playerId}`}
-          className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border border-primary bg-card p-5 transition-colors hover:bg-surface sm:px-8"
-        >
-          <span className="flex min-w-0 flex-col gap-1">
-            <span className="kicker text-primary">Decisivo do mês</span>
-            <span className="figure text-4xl break-all uppercase sm:text-5xl">{decisive.playerName}</span>
-            <span className="text-sm text-muted-foreground">
-              {capitalize(decisiveOutcome(decisive))} · {decisive.goals}G {decisive.assists}A que mudaram o resultado
-            </span>
-          </span>
-          <span className="shrink-0 text-sm text-muted-foreground">
-            <span className="figure text-5xl text-primary tabular">{decisive.points}</span>{" "}
-            {decisive.points === 1 ? "ponto" : "pontos"}
-          </span>
-        </Link>
+          player={decisive}
+        />
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {awardCards(awards).map(({ label, line, detail, tone }) =>
           line ? (
             <Link
@@ -167,6 +169,13 @@ export default async function MonthAwardsPage({ params }: PageProps<"/clubs/[clu
           ),
         )}
       </div>
+      {awards.eventsTrackedSince !== month.matches[0]?.playedAt && (
+        <p className="-mt-5 text-xs text-muted-foreground">
+          {awards.eventsTrackedSince
+            ? `Pré-assistências e interceptações contam a partir das partidas de ${dayMonth.format(new Date(awards.eventsTrackedSince))}.`
+            : "Pré-assistências e interceptações ainda não eram medidas neste mês."}
+        </p>
+      )}
 
       <section>
         <SectionHeading

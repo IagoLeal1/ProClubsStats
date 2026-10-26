@@ -209,7 +209,7 @@ export default function ArchitecturePage() {
         <section id="banco">
           <SectionHeading
             title="O banco"
-            description="Nove tabelas, com a contagem de agora. Toque numa para ver com quem ela se liga e o que guarda."
+            description="Dez tabelas, com a contagem de agora. Toque numa para ver com quem ela se liga e o que guarda."
           />
           <Suspense fallback={<DatabaseExplorer counts={null} />}>
             <DatabaseWithCounts />

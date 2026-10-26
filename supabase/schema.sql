@@ -181,9 +181,10 @@ create trigger match_team_stats_set_updated_at
 
 -- -----------------------------------------------------------------------------
 -- player_match_stats
--- interceptions / yellow_cards: a resposta JSON atual da EA não expõe esses
--- valores em campos dedicados. As colunas existem e ficam NULL até que a
--- origem seja confirmada.
+-- interceptions / second_assists: vêm dos contadores match_event_aggregate_*
+-- da EA (códigos 6 e 115, tabela da comunidade — ver docs/ea-endpoints.md).
+-- NULL = partida salva antes de 26/10/2026, quando começamos a ler os contadores.
+-- yellow_cards: sem fonte usada ainda; fica NULL.
 -- -----------------------------------------------------------------------------
 create table if not exists public.player_match_stats (
   id                uuid primary key default gen_random_uuid(),
@@ -199,6 +200,7 @@ create table if not exists public.player_match_stats (
   tackles           smallint    not null default 0,  -- desarmes certos
   tackle_attempts   smallint    not null default 0,
   interceptions     smallint,
+  second_assists    smallint check (second_assists >= 0),  -- pré-assistências
   yellow_cards      smallint,
   red_cards         smallint    not null default 0,
   saves             smallint    not null default 0,
@@ -209,6 +211,23 @@ create table if not exists public.player_match_stats (
 );
 
 create index if not exists player_match_stats_player_id_idx on public.player_match_stats (player_id);
+
+-- -----------------------------------------------------------------------------
+-- player_match_events
+-- Contadores crus de cada jogador por partida ({"código": quantidade}), para
+-- decodificar mais códigos no futuro: a EA só devolve as 10 últimas partidas de
+-- cada tipo. Tabela separada para não pesar nas leituras de player_match_stats.
+-- -----------------------------------------------------------------------------
+create table if not exists public.player_match_events (
+  id          uuid primary key default gen_random_uuid(),
+  match_id    uuid        not null references public.matches (id) on delete cascade,
+  player_id   uuid        not null references public.players (id) on delete cascade,
+  counts      jsonb       not null,
+  created_at  timestamptz not null default now(),
+  constraint player_match_events_match_id_player_id_key unique (match_id, player_id)
+);
+
+create index if not exists player_match_events_player_id_idx on public.player_match_events (player_id);
 
 -- -----------------------------------------------------------------------------
 -- club_progress
@@ -319,7 +338,8 @@ declare
 begin
   foreach t in array array[
     'clubs', 'players', 'matches', 'match_team_stats',
-    'player_match_stats', 'club_progress', 'player_progress', 'formations', 'formation_players'
+    'player_match_stats', 'player_match_events', 'club_progress', 'player_progress',
+    'formations', 'formation_players'
   ]
   loop
     execute format('alter table public.%I enable row level security', t);

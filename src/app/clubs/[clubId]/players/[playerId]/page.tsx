@@ -17,7 +17,7 @@ import { PositionSplits } from "@/components/players/PositionSplits";
 import { RatingBadge } from "@/components/players/RatingBadge";
 import { ScoutReport } from "@/components/players/ScoutReport";
 import { AssistLinks } from "@/components/records/AssistLinks";
-import { decisiveOutcome } from "@/components/records/Decisive";
+import { DECISIVE_RULE, decisiveOutcome, formatDecisivePoints } from "@/components/records/Decisive";
 import { ImpactDelta } from "@/components/records/ImpactTable";
 import { StatCard } from "@/components/stats/StatCard";
 import {
@@ -51,6 +51,12 @@ import {
 } from "@/lib/stats/player-history";
 import { goalsAndAssists } from "@/lib/stats/player-stats";
 import { splitByPosition } from "@/lib/stats/positions";
+import {
+  firstTrackedMatch,
+  summarizeTrackedEvents,
+  trackedRank,
+  type TrackedEventLine,
+} from "@/lib/stats/tracked-events";
 import { overallTrends } from "@/lib/stats/progress";
 import { MIN_SCOUT_GAMES, scoutPlayer } from "@/lib/stats/scouting";
 import { cn } from "@/lib/utils";
@@ -82,6 +88,8 @@ export async function generateMetadata({
 }
 
 const rankBadge = (rank: SquadRank | null) => (rank ? `${rank.position}º` : undefined);
+
+const dayMonth = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" });
 
 /** Eixo X do gráfico: dia e hora, porque várias partidas costumam ser no mesmo dia. */
 const axisDate = new Intl.DateTimeFormat("pt-BR", {
@@ -287,6 +295,37 @@ function ImpactCard({ impact }: { impact: PlayerImpact }) {
   );
 }
 
+/** Pré-assistências e interceptações: só nas partidas em que a EA mandou os contadores. */
+function TrackedEventCards({
+  line,
+  lines,
+  since,
+}: {
+  line: TrackedEventLine;
+  lines: TrackedEventLine[];
+  since: string;
+}) {
+  const hint = `desde ${dayMonth.format(new Date(since))} · ${line.games} ${line.games === 1 ? "jogo" : "jogos"}`;
+  const badge = (value: (candidate: TrackedEventLine) => number) =>
+    `${trackedRank(lines, line.playerId, value)}º`;
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+      <StatCard
+        label="Pré-assist."
+        value={formatInteger(line.secondAssists)}
+        badge={badge((candidate) => candidate.secondAssists)}
+        hint={`o passe para quem deu a assistência · ${hint}`}
+      />
+      <StatCard
+        label="Interceptações"
+        value={formatInteger(line.interceptions)}
+        badge={badge((candidate) => candidate.interceptions)}
+        hint={hint}
+      />
+    </div>
+  );
+}
+
 function DecisiveCard({ clubId, line, position }: { clubId: string; line: DecisivePlayer; position: number | null }) {
   const outcome = decisiveOutcome(line);
   return (
@@ -303,16 +342,16 @@ function DecisiveCard({ clubId, line, position }: { clubId: string; line: Decisi
               <span className="font-semibold">
                 {line.goals}G {line.assists}A
               </span>{" "}
-              que mudaram o resultado
+              que valeram pontos
             </>
           ) : (
-            "Nenhum gol ou assistência dele mudou um resultado ainda"
+            "Nenhum gol ou assistência dele valeu ponto ainda"
           )}
         </span>
-        <span className="text-xs text-muted-foreground">Pontos que o time não teria sem os gols e as assistências dele</span>
+        <span className="text-xs text-muted-foreground">{DECISIVE_RULE}</span>
       </span>
       <span className="shrink-0 text-sm text-muted-foreground">
-        <span className="figure text-4xl text-primary tabular">{line.points}</span> pts
+        <span className="figure text-4xl text-primary tabular">{formatDecisivePoints(line.points)}</span> pts
         {position !== null && ` · ${position}º do clube`}
       </span>
     </Link>
@@ -434,6 +473,9 @@ export default async function PlayerProfilePage({
   const decisiveLines = computeDecisive(clubMatches, clubStats);
   const decisive = decisiveLines.find((line) => line.playerId === player.id);
   const decisivePosition = decisive && decisive.points > 0 ? decisiveLines.indexOf(decisive) + 1 : null;
+  const trackedLines = summarizeTrackedEvents(clubStats);
+  const trackedLine = trackedLines.find((line) => line.playerId === player.id);
+  const trackedSince = firstTrackedMatch(clubMatches, clubStats);
   const scouting = scoutPlayer(squad, player);
   const scouted = scouting.some((metric) => metric.percentile !== null);
   const rank = (value: (candidate: Player) => number | null) => rankInSquad(squad, player, value);
@@ -526,6 +568,9 @@ export default async function PlayerProfilePage({
         ) : (
           <>
             <HistoryHighlights summary={summary} />
+            {trackedLine && trackedSince && (
+              <TrackedEventCards line={trackedLine} lines={trackedLines} since={trackedSince} />
+            )}
             {form && <FormCard form={form} />}
             {impact && <ImpactCard impact={impact} />}
             {decisive && (

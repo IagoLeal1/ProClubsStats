@@ -83,8 +83,34 @@ Não usados (ainda): `members/career/stats` (carreira do jogador em todos os clu
   `details.customKit.crestAssetId`.
 - `players["<clubId>"]["<playerId>"]`: `playername`, `pos` (grupo: goalkeeper/defender/
   midfielder/forward), `rating`, `goals`, `assists`, `shots`, `passattempts`, `passesmade`,
-  `tackleattempts`, `tacklesmade`, `redcards`, `saves`, `mom`, `secondsPlayed`.
+  `tackleattempts`, `tacklesmade`, `redcards`, `saves`, `mom`, `secondsPlayed`,
+  `match_event_aggregate_0..3` (ver abaixo).
 - `aggregate["<clubId>"]`: soma das estatísticas de cada equipe.
+
+### Contadores de eventos (`match_event_aggregate_0..3`)
+
+- Texto `"código:quantidade,…"` por jogador e partida (ex.: `"215:21,216:5"`), em quatro
+  grupos. São **totais**: não há minuto nem ordem dos lances em nenhum campo da API, então
+  não dá para saber quem abriu o placar ou quem empatou.
+- A EA não documenta os códigos. A tabela usada vem da pesquisa da comunidade com cerca de
+  51 mil linhas de partidas do FC 27:
+  [fc27-clubs-api · match-events](https://1erkandogan.github.io/fc27-clubs-api/match-events/).
+  Os códigos ligados a gol marcam a técnica (pé fraco, de primeira, por cobertura, na
+  trave), não o momento do jogo.
+- Conferido nos nossos 10 últimos jogos de liga em 26/10/2026: `214` = gols e `11` =
+  assistências batem com os campos oficiais (com raras divergências, como a própria
+  documentação avisa).
+- **Usados pelo site** (confirmados na tabela da comunidade), desde 26/10/2026 — as partidas
+  que a EA ainda devolvia nesse dia (a partir de 18/10) também foram preenchidas:
+
+  | Código | Significado | Coluna |
+  | ------ | ----------- | ------ |
+  | `6` | Interceptações | `player_match_stats.interceptions` |
+  | `115` | Pré-assistências (o passe para quem deu a assistência) | `player_match_stats.second_assists` |
+
+- Todos os códigos ficam guardados crus em `player_match_events.counts`, para decodificar mais
+  depois (a EA só devolve as 10 últimas partidas de cada tipo). Leitura em
+  [`src/lib/ea/events.ts`](../src/lib/ea/events.ts).
 
 ### Membros (`members/stats`)
 
@@ -106,8 +132,8 @@ O site usa `crest-base-url` + `l<crestAssetId>.png`:
 | ---- | -------- |
 | Mandante/visitante | Não há campo na resposta → schema usa "adversário" em vez de home/away. |
 | Cartões amarelos | Sem campo dedicado. Colunas existem e ficam `NULL`. |
-| Interceptações | Sem campo dedicado. Colunas existem e ficam `NULL`. |
-| `match_event_aggregate_*` | Pares `código:valor` sem documentação — **não interpretados**. |
+| Cartões amarelos (contadores) | A tabela da comunidade indica `95` + `213`; ainda não conferido com partidas reais. |
+| Demais `match_event_aggregate_*` | Guardados crus em `player_match_events`; só `6` e `115` são usados. |
 | Código de posição (`proPos`) | Tabela FIFA/FC conhecida; conferidos 5=CB, 14=CM, 25=ST. Demais a validar. |
 | `regionId` | Valor bruto guardado em `ea_region_id`; mapeamento para nome não confirmado. |
 | `winnerByDnf` | Sempre `"0"` nas amostras; semântica exata de abandono a validar. |

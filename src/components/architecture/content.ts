@@ -263,9 +263,9 @@ export const SYNC_STEPS: SyncStep[] = [
   },
   {
     title: "Partidas",
-    text: "Liga, playoff e amistoso: as 10 últimas de cada. Cada partida ganha uma impressão digital (ea:<id>), então buscar a mesma partida de novo não duplica nada.",
+    text: "Liga, playoff e amistoso: as 10 últimas de cada. Cada partida ganha uma impressão digital (ea:<id>), então buscar a mesma partida de novo não duplica nada. Dos contadores de eventos de cada jogador saem pré-assistências e interceptações; o resto fica guardado cru.",
     file: "src/services/sync/match-sync.service.ts",
-    writes: ["matches", "match_team_stats", "player_match_stats"],
+    writes: ["matches", "match_team_stats", "player_match_stats", "player_match_events"],
   },
   {
     title: "Pronto",
@@ -346,6 +346,7 @@ export type TableId =
   | "matches"
   | "match_team_stats"
   | "player_match_stats"
+  | "player_match_events"
   | "formations"
   | "formation_players";
 
@@ -413,7 +414,15 @@ export const DB_TABLES: DbTable[] = [
     id: "player_match_stats",
     text: "A partida de cada jogador: liga uma partida a um jogador.",
     key: "match_id + player_id",
-    columns: ["position", "rating", "goals / assists", "shots", "passes", "tackles", "man_of_the_match"],
+    columns: ["position", "rating", "goals / assists", "second_assists", "interceptions", "passes", "tackles"],
+    parents: ["matches", "players"],
+    writtenBy: "Sincronização · etapa Partidas",
+  },
+  {
+    id: "player_match_events",
+    text: "Os contadores de eventos crus da EA de cada jogador na partida, guardados para decodificar mais números depois: a EA só devolve as 10 últimas partidas de cada tipo.",
+    key: "match_id + player_id",
+    columns: ["counts {código: quantidade}"],
     parents: ["matches", "players"],
     writtenBy: "Sincronização · etapa Partidas",
   },

@@ -96,6 +96,9 @@ export interface SessionPlayerLine {
   passesCompleted: number;
   tackles: number;
   tackleAttempts: number;
+  /** Pré-assistências; null quando nenhuma partida dele na noite trouxe os contadores da EA. */
+  secondAssists: number | null;
+  interceptions: number | null;
 }
 
 export interface SessionSummary {
@@ -103,6 +106,8 @@ export interface SessionSummary {
   mvp: SessionPlayerLine | null;
   topScorer: SessionPlayerLine | null;
   topAssister: SessionPlayerLine | null;
+  /** Mais pré-assistências. */
+  topPlaymaker: SessionPlayerLine | null;
   bestRating: SessionPlayerLine | null;
   worstRating: SessionPlayerLine | null;
 }
@@ -117,6 +122,11 @@ function pickTop(
 
 const byRating = (a: SessionPlayerLine, b: SessionPlayerLine) =>
   (b.averageRating ?? 0) - (a.averageRating ?? 0);
+
+/** Soma que ignora partidas sem o dado (null = ainda não medido). */
+export function addTracked(total: number | null, value: number | null): number | null {
+  return value === null ? total : (total ?? 0) + value;
+}
 
 export function summarizeSession(session: GameSession, stats: ClubPlayerMatchStat[]): SessionSummary {
   const matchIds = new Set(session.matches.map((match) => match.id));
@@ -137,6 +147,8 @@ export function summarizeSession(session: GameSession, stats: ClubPlayerMatchSta
       passesCompleted: 0,
       tackles: 0,
       tackleAttempts: 0,
+      secondAssists: null,
+      interceptions: null,
       ratings: [],
     };
     line.games++;
@@ -147,6 +159,8 @@ export function summarizeSession(session: GameSession, stats: ClubPlayerMatchSta
     line.passesCompleted += stat.stats.passesCompleted;
     line.tackles += stat.stats.tackles;
     line.tackleAttempts += stat.stats.tackleAttempts;
+    line.secondAssists = addTracked(line.secondAssists, stat.stats.secondAssists);
+    line.interceptions = addTracked(line.interceptions, stat.stats.interceptions);
     if (stat.stats.manOfTheMatch) line.mvps++;
     if (stat.stats.rating !== null) line.ratings.push(stat.stats.rating);
     lines.set(stat.playerId, line);
@@ -171,6 +185,11 @@ export function summarizeSession(session: GameSession, stats: ClubPlayerMatchSta
       players,
       (a, b) => b.assists - a.assists || a.games - b.games,
       (line) => line.assists > 0,
+    ),
+    topPlaymaker: pickTop(
+      players,
+      (a, b) => (b.secondAssists ?? 0) - (a.secondAssists ?? 0) || a.games - b.games,
+      (line) => (line.secondAssists ?? 0) > 0,
     ),
     bestRating: pickTop(players, byRating, regular),
     worstRating: pickTop(players, (a, b) => byRating(b, a), regular),

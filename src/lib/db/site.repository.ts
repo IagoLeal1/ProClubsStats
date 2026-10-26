@@ -15,6 +15,7 @@ const TABLES: TableName[] = [
   "matches",
   "match_team_stats",
   "player_match_stats",
+  "player_match_events",
   "formations",
   "formation_players",
 ];

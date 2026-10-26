@@ -24,6 +24,11 @@ const COLUMNS: Column[] = [
   { label: "Nota", title: "Nota", render: (p) => <RatingBadge rating={p.rating} /> },
   { label: "G", title: "Gols", render: (p) => formatInteger(p.goals) },
   { label: "A", title: "Assistências", render: (p) => formatInteger(p.assists) },
+  {
+    label: "PA",
+    title: "Pré-assistências: o passe para quem deu a assistência",
+    render: (p) => formatInteger(p.secondAssists),
+  },
   { label: "Chutes", title: "Chutes", render: (p) => formatInteger(p.shots) },
   {
     label: "Passes",
@@ -35,6 +40,7 @@ const COLUMNS: Column[] = [
     title: "Desarmes certos / tentados",
     render: (p) => `${formatInteger(p.tackles)}/${formatInteger(p.tackleAttempts)}`,
   },
+  { label: "Int", title: "Interceptações", render: (p) => formatInteger(p.interceptions) },
   { label: "Def", title: "Defesas", render: (p) => formatInteger(p.saves) },
   { label: "CV", title: "Cartões vermelhos", render: (p) => formatInteger(p.redCards) },
   { label: "Min", title: "Minutos jogados", render: (p) => formatSecondsAsMinutes(p.secondsPlayed) },

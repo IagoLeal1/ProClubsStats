@@ -10,17 +10,18 @@ import { DB_TABLES, type TableId } from "./content";
 const TABLE_BY_ID = new Map(DB_TABLES.map((table) => [table.id, table]));
 const countFormat = new Intl.NumberFormat("pt-BR");
 
-/** Grade 3 × 3 no computador: clube à esquerda, partidas no meio, detalhes à direita. */
+/** Grade 5 × 2 no computador: clube, elenco e formações em cima; partidas embaixo. */
 const ORDER: TableId[] = [
+  "clubs",
   "club_progress",
   "players",
   "player_progress",
-  "clubs",
-  "matches",
-  "player_match_stats",
   "formations",
-  "formation_players",
+  "matches",
   "match_team_stats",
+  "player_match_stats",
+  "player_match_events",
+  "formation_players",
 ];
 
 type Relation = "selected" | "parent" | "child" | "none";
@@ -39,7 +40,7 @@ const RELATION_TAG: Partial<Record<Relation, string>> = {
 
 export type TableCounts = Partial<Record<TableId, number>>;
 
-/** As nove tabelas: escolher uma mostra com quem ela se liga e o que guarda. */
+/** As tabelas: escolher uma mostra com quem ela se liga e o que guarda. */
 export function DatabaseExplorer({ counts }: { counts: TableCounts | null }) {
   const [selected, setSelected] = useState<TableId>("matches");
   const table = TABLE_BY_ID.get(selected) ?? DB_TABLES[0];
@@ -47,7 +48,7 @@ export function DatabaseExplorer({ counts }: { counts: TableCounts | null }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {ORDER.map((id) => {
           const relation = relationTo(selected, id);
           const tag = RELATION_TAG[relation];
@@ -68,7 +69,10 @@ export function DatabaseExplorer({ counts }: { counts: TableCounts | null }) {
             >
               <span className="min-w-0 space-y-0.5">
                 {tag && <span className="kicker block text-[11px] text-muted-foreground">{tag}</span>}
-                <span className="block truncate font-mono text-[13px] font-semibold">{id}</span>
+                {/* Espaço invisível depois de cada "_": nomes longos quebram ali, não no meio da palavra. */}
+                <span className="block font-mono text-[13px] font-semibold break-words">
+                  {id.replaceAll("_", "_\u200b")}
+                </span>
               </span>
               {count !== undefined && (
                 <span className="shrink-0 text-right">

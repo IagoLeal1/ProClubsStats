@@ -5,13 +5,16 @@ import { createHash } from "node:crypto";
 import {
   findExistingFingerprints,
   upsertMatches,
+  upsertPlayerMatchEvents,
   upsertPlayerMatchStats,
   upsertTeamStats,
   type MatchInsert,
+  type PlayerMatchEventsInsert,
   type PlayerMatchStatsInsert,
   type TeamStatsInsert,
 } from "@/lib/db/matches.repository";
 import { fetchAllRecentMatches } from "@/lib/ea";
+import { logServerError } from "@/lib/errors";
 import type { Club } from "@/types/club";
 import type { MatchSnapshot, MatchType, TeamMatchStats } from "@/types/match";
 
@@ -134,12 +137,31 @@ function buildPlayerStatsRows(
         tackles: stats.tackles,
         tackle_attempts: stats.tackleAttempts,
         interceptions: stats.interceptions,
+        second_assists: stats.secondAssists,
         yellow_cards: stats.yellowCards,
         red_cards: stats.redCards,
         saves: stats.saves,
         man_of_the_match: stats.manOfTheMatch,
         seconds_played: stats.secondsPlayed,
       });
+    }
+  }
+  return [...rows.values()];
+}
+
+function buildPlayerEventRows(
+  matches: Map<string, MatchSnapshot>,
+  matchIds: Map<string, string>,
+  playerIds: Map<string, string>,
+): PlayerMatchEventsInsert[] {
+  const rows = new Map<string, PlayerMatchEventsInsert>();
+  for (const [fingerprint, match] of matches) {
+    const matchId = matchIds.get(fingerprint);
+    if (!matchId) continue;
+    for (const stats of match.players) {
+      const playerId = playerIds.get(stats.eaPlayerId);
+      if (!playerId || !stats.eventCounts) continue;
+      rows.set(`${matchId}:${playerId}`, { match_id: matchId, player_id: playerId, counts: stats.eventCounts });
     }
   }
   return [...rows.values()];
@@ -177,6 +199,12 @@ export async function syncClubMatches(club: Club): Promise<MatchSyncResult> {
   await upsertPlayerMatchStats(
     buildPlayerStatsRows(byFingerprint, matchIds, players.idsByEaPlayerId),
   );
+  // Os contadores crus são só arquivo: se falharem, as partidas continuam salvas.
+  try {
+    await upsertPlayerMatchEvents(buildPlayerEventRows(byFingerprint, matchIds, players.idsByEaPlayerId));
+  } catch (error) {
+    logServerError("sync:match-events", error);
+  }
 
   return {
     fetched: byFingerprint.size,

@@ -132,8 +132,9 @@ pesquisa → resultado da EA → "Ver estatísticas" (Server Action)
 
 ### Banco
 
-`clubs`, `players`, `matches`, `match_team_stats`, `player_match_stats`, `club_progress`,
-`player_progress`, `formations`, `formation_players` — ver [`supabase/schema.sql`](supabase/schema.sql).
+`clubs`, `players`, `matches`, `match_team_stats`, `player_match_stats`, `player_match_events`
+(contadores crus da EA), `club_progress`, `player_progress`, `formations`, `formation_players` —
+ver [`supabase/schema.sql`](supabase/schema.sql).
 
 Decisões em relação ao modelo inicial:
 
@@ -182,9 +183,12 @@ região, semântica de `winnerByDnf`.
   % de acerto, MVPs, nota) com a barra do percentil dentro do elenco, estilo Sofascore.
 - **Impacto em campo**: aproveitamento do time com e sem cada jogador (compara quando há 3+
   jogos dos dois lados).
-- **O cara decisivo**: pontos que o time não teria sem os gols e as assistências de cada um
-  (gol no 2×1 vale a vitória, no 5×0 não muda nada). Destaque na visão geral, ranking em
-  Recordes, "Decisivo da noite", "Decisivo do mês" e selo no perfil.
+- **O cara decisivo**: cada gol vale a parte dele nos pontos do jogo (no 2×1, 1,5; no 2×0, 1;
+  no 8×1, 0,375) e quem marca e quem dá a assistência levam esse valor. Destaque na visão
+  geral, ranking em Recordes, "Decisivo da noite", "Decisivo do mês" e selo no perfil.
+- **Pré-assistências e interceptações**: lidas dos contadores de eventos da EA desde
+  26/10/2026 (ver [`docs/ea-endpoints.md`](docs/ea-endpoints.md)). Aparecem na partida, no
+  resumo da noite (Armador e Ladrão de bola), nos prêmios do mês, nos recordes e no perfil.
 - **Jogos apertados**: campanha nas partidas decididas por até 1 gol e quem tem nota melhor
   nelas do que no geral.
 - **Prêmios do mês**: Bola de Ouro, artilheiro, garçom, muralha (desarmes) e bagre do mês, com

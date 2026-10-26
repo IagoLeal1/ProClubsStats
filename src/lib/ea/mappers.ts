@@ -19,6 +19,7 @@ import {
 } from "@/types/player";
 
 import { EA_CREST_BASE_URL } from "./constants";
+import { EA_EVENT_CODES, eventCount, parseEventCounts } from "./events";
 import { positionLabelFromCode } from "./positions";
 import type {
   EAClubDetails,
@@ -236,6 +237,13 @@ function mapEAMatchPlayer(
   const name = player.playername?.trim();
   if (!name) return null;
 
+  const events = parseEventCounts([
+    player.match_event_aggregate_0,
+    player.match_event_aggregate_1,
+    player.match_event_aggregate_2,
+    player.match_event_aggregate_3,
+  ]);
+
   return {
     eaPlayerId,
     name,
@@ -248,15 +256,16 @@ function mapEAMatchPlayer(
     passesCompleted: count(player.passesmade),
     tackles: count(player.tacklesmade),
     tackleAttempts: count(player.tackleattempts),
-    // TODO(ea): não há campo dedicado para interceptações nem cartões amarelos
-    // na resposta atual. Podem estar codificados em match_event_aggregate_*,
-    // cujo significado não é documentado — não inferir.
-    interceptions: null,
+    interceptions: eventCount(events, EA_EVENT_CODES.interceptions),
+    secondAssists: eventCount(events, EA_EVENT_CODES.secondAssists),
+    // TODO(ea): cartões amarelos também estão nos contadores (95 + 213), mas
+    // ainda não conferimos com partidas reais — não inferir.
     yellowCards: null,
     redCards: count(player.redcards),
     saves: count(player.saves),
     manOfTheMatch: count(player.mom) > 0,
     secondsPlayed: player.secondsPlayed,
+    eventCounts: events,
   };
 }
 

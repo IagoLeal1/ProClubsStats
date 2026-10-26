@@ -27,6 +27,9 @@ const eaText = z
   .nullish()
   .transform((value) => (value && value.trim() !== "" ? value : null));
 
+/** Grupo de contadores "código:quantidade" (vazio é válido: nenhum evento). */
+const eaEventGroup = z.string().nullish();
+
 /** IDs grandes (ex.: matchId "29408884170075") são tratados como texto. */
 const eaId = z
   .union([z.string(), z.number()])
@@ -154,6 +157,11 @@ export const EAMatchPlayerSchema = z.object({
   saves: eaNumber,
   mom: eaNumber,
   secondsPlayed: eaNumber,
+  /** Contadores de eventos sem documentação oficial (ver events.ts). */
+  match_event_aggregate_0: eaEventGroup,
+  match_event_aggregate_1: eaEventGroup,
+  match_event_aggregate_2: eaEventGroup,
+  match_event_aggregate_3: eaEventGroup,
 });
 export type EAMatchPlayer = z.output<typeof EAMatchPlayerSchema>;
 

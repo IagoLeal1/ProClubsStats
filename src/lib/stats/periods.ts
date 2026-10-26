@@ -1,7 +1,7 @@
 import type { ClubPlayerMatchStat, Match } from "@/types/match";
 import type { PositionGroup } from "@/types/player";
 
-import { groupSessions, sessionRecord, type GameSession, type SessionRecord } from "./sessions";
+import { addTracked, groupSessions, sessionRecord, type GameSession, type SessionRecord } from "./sessions";
 
 const TIME_ZONE = "America/Sao_Paulo";
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -72,6 +72,9 @@ export interface PeriodPlayerLine {
   goals: number;
   assists: number;
   tackles: number;
+  /** Pré-assistências e interceptações; null sem partidas com os contadores da EA. */
+  secondAssists: number | null;
+  interceptions: number | null;
   mvps: number;
   averageRating: number | null;
   /** Setor em que mais jogou no período (empate: o de melhor nota). */
@@ -119,6 +122,8 @@ export function summarizePlayers(matches: Match[], stats: ClubPlayerMatchStat[])
       goals: 0,
       assists: 0,
       tackles: 0,
+      secondAssists: null,
+      interceptions: null,
       mvps: 0,
       ratings: [],
       positions: new Map(),
@@ -128,6 +133,8 @@ export function summarizePlayers(matches: Match[], stats: ClubPlayerMatchStat[])
     draft.goals += stat.stats.goals;
     draft.assists += stat.stats.assists;
     draft.tackles += stat.stats.tackles;
+    draft.secondAssists = addTracked(draft.secondAssists, stat.stats.secondAssists);
+    draft.interceptions = addTracked(draft.interceptions, stat.stats.interceptions);
     if (stat.stats.manOfTheMatch) draft.mvps++;
     if (rating !== null) draft.ratings.push(rating);
     if (position) {
