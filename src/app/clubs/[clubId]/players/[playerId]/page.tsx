@@ -55,6 +55,8 @@ import { goalsAndAssists } from "@/lib/stats/player-stats";
 import { splitByPosition } from "@/lib/stats/positions";
 import {
   firstTrackedMatch,
+  GOAL_TYPE_KEYS,
+  GOAL_TYPE_LABELS,
   summarizeTrackedEvents,
   trackedRank,
   type TrackedEventLine,
@@ -311,19 +313,34 @@ function TrackedEventCards({
   const badge = (value: (candidate: TrackedEventLine) => number) =>
     `${trackedRank(lines, line.playerId, value)}º`;
   return (
-    <div className="grid grid-cols-2 gap-2 sm:gap-3">
-      <StatCard
-        label="Pré-assist."
-        value={formatInteger(line.secondAssists)}
-        badge={badge((candidate) => candidate.secondAssists)}
-        hint={`o passe para quem deu a assistência · ${hint}`}
-      />
-      <StatCard
-        label="Interceptações"
-        value={formatInteger(line.interceptions)}
-        badge={badge((candidate) => candidate.interceptions)}
-        hint={hint}
-      />
+    <div className="space-y-2 sm:space-y-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <StatCard
+          label="Pré-assist."
+          value={formatInteger(line.secondAssists)}
+          badge={badge((candidate) => candidate.secondAssists)}
+          hint={`o passe para quem deu a assistência · ${hint}`}
+        />
+        <StatCard
+          label="Interceptações"
+          value={formatInteger(line.interceptions)}
+          badge={badge((candidate) => candidate.interceptions)}
+          hint={hint}
+        />
+      </div>
+      {line.goals > 0 && (
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+          {GOAL_TYPE_KEYS.map((key) => (
+            <StatCard
+              key={key}
+              label={GOAL_TYPE_LABELS[key].label}
+              value={formatInteger(line.goalTypes[key])}
+              badge={line.goalTypes[key] > 0 ? badge((candidate) => candidate.goalTypes[key]) : undefined}
+              hint={`dos ${line.goals} gols · ${GOAL_TYPE_LABELS[key].detail}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

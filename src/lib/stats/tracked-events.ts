@@ -1,10 +1,19 @@
-import type { ClubPlayerMatchStat, Match } from "@/types/match";
+import type { ClubPlayerMatchStat, GoalTypes, Match } from "@/types/match";
 
 /**
- * Pré-assistências e interceptações vêm dos contadores de eventos da EA, que o
- * site só passou a ler em 26/10/2026 (com as partidas que a EA ainda guardava).
- * Partidas anteriores têm esses valores em null e ficam fora das somas.
+ * Pré-assistências, interceptações e tipos de gol vêm dos contadores de eventos
+ * da EA, que o site só passou a ler em 26/10/2026 (com as partidas que a EA ainda
+ * guardava). Partidas anteriores têm esses valores em null e ficam fora das somas.
  */
+
+export const GOAL_TYPE_KEYS = ["weakFoot", "chipped", "firstTime", "offPost"] as const satisfies (keyof GoalTypes)[];
+
+export const GOAL_TYPE_LABELS: Record<keyof GoalTypes, { label: string; detail: string }> = {
+  weakFoot: { label: "Pé fraco", detail: "com o pé que ele menos usa" },
+  chipped: { label: "Cobertura", detail: "por cima do goleiro" },
+  firstTime: { label: "De primeira", detail: "sem dominar a bola" },
+  offPost: { label: "Na trave", detail: "bateu na trave e entrou" },
+};
 
 export interface TrackedEventLine {
   playerId: string;
@@ -13,6 +22,9 @@ export interface TrackedEventLine {
   games: number;
   secondAssists: number;
   interceptions: number;
+  /** Gols nessas partidas e quantos foram de cada tipo. */
+  goals: number;
+  goalTypes: GoalTypes;
 }
 
 export function summarizeTrackedEvents(stats: ClubPlayerMatchStat[]): TrackedEventLine[] {
@@ -26,10 +38,14 @@ export function summarizeTrackedEvents(stats: ClubPlayerMatchStat[]): TrackedEve
       games: 0,
       secondAssists: 0,
       interceptions: 0,
+      goals: 0,
+      goalTypes: { firstTime: 0, weakFoot: 0, chipped: 0, offPost: 0 },
     };
     line.games++;
     line.secondAssists += secondAssists ?? 0;
     line.interceptions += interceptions ?? 0;
+    line.goals += stat.stats.goals;
+    for (const key of GOAL_TYPE_KEYS) line.goalTypes[key] += stat.stats.goalTypes?.[key] ?? 0;
     lines.set(stat.playerId, line);
   }
   return [...lines.values()];

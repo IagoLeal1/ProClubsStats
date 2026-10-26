@@ -5,6 +5,7 @@ import type {
   Platform,
 } from "@/types/club";
 import type {
+  GoalTypes,
   MatchResult,
   MatchSnapshot,
   MatchType,
@@ -18,7 +19,7 @@ import {
 } from "@/types/player";
 
 import { EA_CREST_BASE_URL } from "./constants";
-import { EA_EVENT_CODES, eventCount, parseEventCounts } from "./events";
+import { EA_EVENT_CODES, eventCount, parseEventCounts, type EventCounts } from "./events";
 import { positionLabelFromCode } from "./positions";
 import type {
   EAClubDetails,
@@ -226,6 +227,18 @@ function mapAggregate(
   };
 }
 
+/** Tipos de gol dos contadores, limitados aos gols oficiais (às vezes divergem). */
+function mapGoalTypes(events: EventCounts | null, goals: number): GoalTypes | null {
+  if (events === null) return null;
+  const of = (code: number) => Math.min(eventCount(events, code) ?? 0, goals);
+  return {
+    firstTime: of(EA_EVENT_CODES.goalsFirstTime),
+    weakFoot: of(EA_EVENT_CODES.goalsWeakFoot),
+    chipped: of(EA_EVENT_CODES.goalsChipped),
+    offPost: of(EA_EVENT_CODES.goalsOffPost),
+  };
+}
+
 function mapEAMatchPlayer(
   eaPlayerId: string,
   player: EAMatchPlayer,
@@ -254,6 +267,7 @@ function mapEAMatchPlayer(
     tackleAttempts: count(player.tackleattempts),
     interceptions: eventCount(events, EA_EVENT_CODES.interceptions),
     secondAssists: eventCount(events, EA_EVENT_CODES.secondAssists),
+    goalTypes: mapGoalTypes(events, count(player.goals)),
     // TODO(ea): cartões amarelos também estão nos contadores (95 + 213), mas
     // ainda não conferimos com partidas reais — não inferir.
     yellowCards: null,

@@ -126,6 +126,13 @@ Não usados (ainda): `members/career/stats` (carreira do jogador em todos os clu
   | ------ | ----------- | ------ |
   | `6` | Interceptações | `player_match_stats.interceptions` |
   | `115` | Pré-assistências (o passe para quem deu a assistência) | `player_match_stats.second_assists` |
+  | `131` | Gols com o pé fraco | `player_match_stats.goals_weak_foot` |
+  | `128` | Gols de primeira | `player_match_stats.goals_first_time` |
+  | `136` | Gols que bateram na trave e entraram | `player_match_stats.goals_off_post` |
+  | `123` | Gols de cobertura (parcial: quando marca é cobertura, mas nem toda é marcada) | `player_match_stats.goals_chipped` |
+
+  Os tipos de gol nunca passam dos gols oficiais da partida: em alguns jogos os contadores
+  dão mais gols de um tipo do que o campo `goals` (ex.: 2 de pé fraco com 1 gol).
 
 - Todos os códigos ficam guardados crus em `player_match_events.counts`, para decodificar mais
   depois (a EA só devolve as 10 últimas partidas de cada tipo). Leitura em
@@ -152,7 +159,7 @@ O site usa `crest-base-url` + `l<crestAssetId>.png`:
 | Mandante/visitante | Não há campo na resposta → schema usa "adversário" em vez de home/away. |
 | Cartões amarelos | Sem campo dedicado. Colunas existem e ficam `NULL`. |
 | Cartões amarelos (contadores) | A tabela da comunidade indica `95` + `213`; ainda não conferido com partidas reais. |
-| Demais `match_event_aggregate_*` | Guardados crus em `player_match_events`; só `6` e `115` são usados. |
+| Demais `match_event_aggregate_*` | Guardados crus em `player_match_events`; só os códigos da tabela acima são usados. |
 | Código de posição (`proPos`) | Tabela FIFA/FC conhecida; conferidos 5=CB, 14=CM, 25=ST. Demais a validar. |
 | `regionId` | Valor bruto guardado em `ea_region_id`; mapeamento para nome não confirmado. |
 | `winnerByDnf` | Sempre `"0"` nas amostras; semântica exata de abandono a validar. |

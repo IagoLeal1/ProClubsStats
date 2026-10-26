@@ -103,6 +103,10 @@ type PlayerMatchStatsRow = {
   interceptions: number | null;
   /** Pré-assistências. */
   second_assists: number | null;
+  goals_first_time: number | null;
+  goals_weak_foot: number | null;
+  goals_chipped: number | null;
+  goals_off_post: number | null;
   yellow_cards: number | null;
   red_cards: number;
   saves: number;
@@ -291,6 +295,10 @@ export type Database = {
         | "tackle_attempts"
         | "interceptions"
         | "second_assists"
+        | "goals_first_time"
+        | "goals_weak_foot"
+        | "goals_chipped"
+        | "goals_off_post"
         | "yellow_cards"
         | "red_cards"
         | "saves"

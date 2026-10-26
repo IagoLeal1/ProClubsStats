@@ -57,6 +57,15 @@ function mapPlayerStatsValues(row: TableRow<"player_match_stats">): PlayerMatchS
     tackleAttempts: row.tackle_attempts,
     interceptions: row.interceptions,
     secondAssists: row.second_assists,
+    goalTypes:
+      row.goals_first_time === null
+        ? null
+        : {
+            firstTime: row.goals_first_time,
+            weakFoot: row.goals_weak_foot ?? 0,
+            chipped: row.goals_chipped ?? 0,
+            offPost: row.goals_off_post ?? 0,
+          },
     yellowCards: row.yellow_cards,
     redCards: row.red_cards,
     saves: row.saves,

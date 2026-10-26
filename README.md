@@ -197,6 +197,8 @@ região, semântica de `winnerByDnf`.
 - **Pré-assistências e interceptações**: lidas dos contadores de eventos da EA desde
   26/10/2026 (ver [`docs/ea-endpoints.md`](docs/ea-endpoints.md)). Aparecem na partida, no
   resumo da noite (Armador e Ladrão de bola), nos prêmios do mês, nos recordes e no perfil.
+- **Tipos de gol** (pé fraco, cobertura, de primeira, na trave): dos mesmos contadores, na
+  visão geral (total do clube e quem lidera cada tipo) e no perfil.
 - **Jogos apertados**: campanha nas partidas decididas por até 1 gol e quem tem nota melhor
   nelas do que no geral.
 - **Prêmios do mês**: Bola de Ouro, artilheiro, garçom, muralha (desarmes) e bagre do mês, com

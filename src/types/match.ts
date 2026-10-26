@@ -22,6 +22,15 @@ export interface TeamMatchStats {
   redCards: number;
 }
 
+/** Gols de cada tipo na partida (nunca acima dos gols oficiais). */
+export interface GoalTypes {
+  firstTime: number;
+  weakFoot: number;
+  /** Cobertura: pode ficar abaixo do real (a EA nem sempre marca). */
+  chipped: number;
+  offPost: number;
+}
+
 export interface PlayerMatchStatsValues {
   position: PositionGroup | null;
   rating: number | null;
@@ -36,6 +45,8 @@ export interface PlayerMatchStatsValues {
   interceptions: number | null;
   /** Pré-assistências (o passe para quem deu a assistência); null como interceptions. */
   secondAssists: number | null;
+  /** Tipos de gol; null como interceptions. */
+  goalTypes: GoalTypes | null;
   /** Não disponível na resposta atual da EA. */
   yellowCards: number | null;
   redCards: number;

@@ -7,8 +7,10 @@ import { ClubStats } from "@/components/clubs/ClubStats";
 import { DivisionCard } from "@/components/clubs/DivisionCard";
 import { LastSessionCard } from "@/components/clubs/LastSessionCard";
 import { SectionHeading } from "@/components/layout/SectionHeading";
+import { GoalTypesCard } from "@/components/players/GoalTypesCard";
 import { PlayerRanking } from "@/components/players/PlayerRanking";
 import { SquadFormCard } from "@/components/players/SquadFormCard";
+import { X1Card } from "@/components/players/X1Card";
 import { AssistLinks } from "@/components/records/AssistLinks";
 import { DecisiveSpotlight } from "@/components/records/Decisive";
 import { TeamOfWeekCard } from "@/components/weeks/TeamOfWeekCard";
@@ -22,11 +24,16 @@ import { computeAssistLinks } from "@/lib/stats/partnerships";
 import { divisionTimeline } from "@/lib/stats/progress";
 import { buildPlayerRankings } from "@/lib/stats/player-stats";
 import { groupSessions, summarizeSession } from "@/lib/stats/sessions";
+import { firstTrackedMatch, summarizeTrackedEvents } from "@/lib/stats/tracked-events";
 import { groupWeeks, pickTeamOfTheWeek } from "@/lib/stats/weeks";
+import { computeX1Table } from "@/lib/stats/x1";
+import { cn } from "@/lib/utils";
 
 import { loadClub } from "./load-club";
 
 const RECENT_MATCHES = 5;
+
+const dayMonth = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" });
 
 export default async function ClubDashboardPage({
   params,
@@ -47,6 +54,12 @@ export default async function ClubDashboardPage({
   const lastSession = groupSessions(matches).at(-1);
   const lastWeek = groupWeeks(matches).at(-1);
   const assistLinks = computeAssistLinks(matches, stats);
+  const trackedSince = firstTrackedMatch(matches, stats);
+  const x1 = computeX1Table(
+    players.filter((player) => player.isMember).map((player) => ({ id: player.id, name: player.name })),
+    matches,
+    stats,
+  );
 
   return (
     <div className="space-y-11">
@@ -84,6 +97,14 @@ export default async function ClubDashboardPage({
             />
           )}
           <ClubRecentMatches clubId={club.id} matches={recentMatches} />
+          {trackedSince && (
+            <GoalTypesCard clubId={club.id} lines={summarizeTrackedEvents(stats)} since={dayMonth.format(new Date(trackedSince))} />
+          )}
+          {/* Lado a lado para a coluna principal acompanhar a altura da lateral. */}
+          <div className={cn("grid grid-cols-1 gap-6", club.division && "sm:grid-cols-2")}>
+            <X1Card clubId={club.id} lines={x1.lines} />
+            {club.division && <DivisionCard division={club.division} timeline={divisionTimeline(progress)} />}
+          </div>
         </div>
 
         <aside className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
@@ -104,7 +125,6 @@ export default async function ClubDashboardPage({
               {assistLinks.confirmedAssists} de {assistLinks.totalAssists} assistências confirmadas · ver recordes
             </Link>
           </section>
-          {club.division && <DivisionCard division={club.division} timeline={divisionTimeline(progress)} />}
           <ClubProgress points={progress} />
         </aside>
       </div>

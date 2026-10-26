@@ -6,13 +6,18 @@
  * com cerca de 51 mil linhas de partidas do FC 27:
  * https://1erkandogan.github.io/fc27-clubs-api/match-events/
  * Conferida nos nossos jogos em 26/10/2026 (214 = gols e 11 = assistências batem
- * com os campos oficiais). Só viram estatística os códigos confirmados lá; o resto
- * é guardado cru em player_match_events.
+ * com os campos oficiais). Só viram estatística os códigos confirmados lá (mais a
+ * cobertura, marcada como parcial); o resto é guardado cru em player_match_events.
  */
 export const EA_EVENT_CODES = {
   interceptions: 6,
   /** Pré-assistência: o passe para quem deu a assistência. */
   secondAssists: 115,
+  goalsFirstTime: 128,
+  goalsWeakFoot: 131,
+  /** Parcial na tabela: quando marca é cobertura, mas nem toda cobertura é marcada. */
+  goalsChipped: 123,
+  goalsOffPost: 136,
 } as const;
 
 export type EventCounts = Record<string, number>;

@@ -183,6 +183,8 @@ create trigger match_team_stats_set_updated_at
 -- player_match_stats
 -- interceptions / second_assists: vêm dos contadores match_event_aggregate_*
 -- da EA (códigos 6 e 115, tabela da comunidade — ver docs/ea-endpoints.md).
+-- goals_first_time / goals_weak_foot / goals_chipped / goals_off_post: tipos de gol
+-- (códigos 128, 131, 123 e 136), nunca acima de goals.
 -- NULL = partida salva antes de 26/10/2026, quando começamos a ler os contadores.
 -- yellow_cards: sem fonte usada ainda; fica NULL.
 -- -----------------------------------------------------------------------------
@@ -201,6 +203,10 @@ create table if not exists public.player_match_stats (
   tackle_attempts   smallint    not null default 0,
   interceptions     smallint,
   second_assists    smallint check (second_assists >= 0),  -- pré-assistências
+  goals_first_time  smallint check (goals_first_time >= 0),
+  goals_weak_foot   smallint check (goals_weak_foot >= 0),
+  goals_chipped     smallint check (goals_chipped >= 0),  -- cobertura
+  goals_off_post    smallint check (goals_off_post >= 0),  -- bateu na trave e entrou
   yellow_cards      smallint,
   red_cards         smallint    not null default 0,
   saves             smallint    not null default 0,
