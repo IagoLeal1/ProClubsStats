@@ -10,7 +10,10 @@ import type { MatchType } from "@/types/match";
 export const EA_DEFAULT_BASE_URL = "https://proclubs.ea.com/api/fc";
 
 export const EA_ENDPOINTS = {
+  /** Ranking das temporadas já encerradas: usado só para buscar clubes pelo nome. */
   leaderboardSearch: "/allTimeLeaderboard/search",
+  /** Ranking da temporada em andamento: a única fonte da divisão atual. */
+  seasonLeaderboardSearch: "/currentSeasonLeaderboard/search",
   clubInfo: "/clubs/info",
   clubOverallStats: "/clubs/overallStats",
   memberStats: "/members/stats",

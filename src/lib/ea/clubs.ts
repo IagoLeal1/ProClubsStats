@@ -1,16 +1,11 @@
 import "server-only";
 
-import type { ClubDivision, ClubSearchResult, ClubSnapshot, Platform } from "@/types/club";
+import type { ClubSearchResult, ClubSnapshot, Platform } from "@/types/club";
 
 import { getEAClient } from "./client";
 import { EA_ENDPOINTS, EA_PLATFORM_CODES } from "./constants";
 import { EAError, isEANotFound } from "./errors";
-import {
-  mapEAClub,
-  mapEAClubInfoToSearchResult,
-  mapEAClubSearchResult,
-  mapEADivision,
-} from "./mappers";
+import { mapEAClub, mapEAClubInfoToSearchResult, mapEAClubSearchResult } from "./mappers";
 import {
   EAClubInfoResponseSchema,
   EAClubOverallStatsResponseSchema,
@@ -103,20 +98,21 @@ export async function fetchClubSnapshot(
 }
 
 /**
- * Divisão do clube. Só a busca do ranking geral informa a divisão atual, e
- * ela busca por nome: o resultado certo é o que tem o mesmo ID. null se o
- * clube não aparecer no ranking.
+ * Divisão atual do clube. Só o ranking da temporada em andamento a informa
+ * (o de todas as temporadas fica parado na divisão do fim da anterior), e ele
+ * busca por nome: o resultado certo é o que tem o mesmo ID. null se o clube
+ * ainda não jogou nesta temporada.
  */
-export async function fetchClubDivision(
+export async function fetchCurrentDivision(
   eaClubId: number,
   clubName: string,
   platform: Platform,
-): Promise<ClubDivision | null> {
+): Promise<number | null> {
   const entries = await getEAClient().get(
-    EA_ENDPOINTS.leaderboardSearch,
+    EA_ENDPOINTS.seasonLeaderboardSearch,
     { platform: EA_PLATFORM_CODES[platform], clubName },
     EALeaderboardSearchResponseSchema,
   );
   const entry = entries.find((candidate) => (candidate.clubId ?? candidate.clubInfo?.clubId) === eaClubId);
-  return entry ? mapEADivision(entry) : null;
+  return entry?.currentDivision ?? null;
 }

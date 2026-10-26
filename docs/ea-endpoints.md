@@ -50,11 +50,12 @@ Investigação feita em **2026-10-05**.
 | Buscar clube por nome      | `GET /allTimeLeaderboard/search?platform&clubName`    | ✅     |
 | Dados do clube (nome, escudo) | `GET /clubs/info?platform&clubIds`                 | ✅     |
 | Estatísticas gerais + skill rating | `GET /clubs/overallStats?platform&clubIds`    | ✅     |
+| Divisão atual              | `GET /currentSeasonLeaderboard/search?platform&clubName` | ✅  |
 | Membros e estatísticas     | `GET /members/stats?platform&clubId`                  | ✅     |
 | Partidas recentes          | `GET /clubs/matches?platform&clubIds&matchType&maxResultCount` | ✅ |
 
 Não usados (ainda): `members/career/stats` (carreira do jogador em todos os clubes),
-`settings` (tabela de divisões), `club/playoffAchievements`, `currentSeasonLeaderboard/search`.
+`settings` (tabela de divisões, ver abaixo), `club/playoffAchievements`.
 
 `/clubs/search` (usado por ferramentas antigas) **não existe mais** — retorna 404.
 
@@ -64,6 +65,24 @@ Não usados (ainda): `members/career/stats` (carreira do jogador em todos os clu
 - Só encontra clubes presentes no ranking geral, e a correspondência de nome é a da EA
   (ex.: `"real madrid"` não encontra `"REAL   MADRID"`, mas `"real"` encontra).
   Por isso o app também aceita **ID numérico do clube** (via `clubs/info`).
+
+### Divisão (conferido em 26/10/2026)
+
+- `allTimeLeaderboard/search` soma só as **temporadas encerradas**: para o Clube Prognum,
+  121 jogos e `currentDivision: 8` parados no fim da temporada anterior. Não serve para a
+  divisão atual (o site mostrou "8ª" por isso até 26/10/2026).
+- `currentSeasonLeaderboard/search` cobre a **temporada em andamento** (17 jogos; 121 + 17 =
+  os 138 de `overallStats`): `currentDivision` é a divisão de agora. Traz também `points`
+  (16 nesse dia) e `promotions`/`relegations` da temporada; o significado exato de `points`
+  ainda não foi confirmado.
+- `clubs/overallStats` soma todas as temporadas, inclusive a atual: `bestDivision`,
+  `promotions` (7 = 5 + 2) e `relegations`. Não traz a divisão atual.
+- `settings` lista as **10 divisões** (`divisionId` 1 = Division 1, a de cima) com
+  `pointsForPromotion`, `pointsToHoldDivision` e `pointsToTitle` de cada uma (ex.: Division 4
+  pede 16 para subir). O número da API é o mesmo do jogo. (A documentação da comunidade fala
+  em 1 a 6; a tabela da própria EA tem 10.)
+- O site usa: divisão atual do ranking da temporada; melhor divisão, acessos e quedas do
+  `overallStats`.
 
 ### Clube inexistente
 

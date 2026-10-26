@@ -65,13 +65,11 @@ export async function upsertClub(snapshot: ClubSnapshot, syncedAt: string): Prom
           goals_for: snapshot.record.goalsFor,
           goals_against: snapshot.record.goalsAgainst,
           last_synced_at: syncedAt,
-          // Sem divisão desta vez (consulta falhou): não apaga a que já está salva.
-          ...(snapshot.division && {
-            current_division: snapshot.division.current,
-            best_division: snapshot.division.best,
-            promotions: snapshot.division.promotions,
-            relegations: snapshot.division.relegations,
-          }),
+          // Valor que não veio desta vez (consulta falhou): não apaga o que já está salvo.
+          ...(snapshot.division?.current != null && { current_division: snapshot.division.current }),
+          ...(snapshot.division?.best != null && { best_division: snapshot.division.best }),
+          ...(snapshot.division?.promotions != null && { promotions: snapshot.division.promotions }),
+          ...(snapshot.division?.relegations != null && { relegations: snapshot.division.relegations }),
         },
         { onConflict: "ea_club_id,platform" },
       )

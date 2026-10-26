@@ -1,9 +1,9 @@
 import "server-only";
 
 import { recordClubProgress, upsertClub } from "@/lib/db/clubs.repository";
-import { fetchClubDivision, fetchClubSnapshot } from "@/lib/ea";
+import { fetchClubSnapshot, fetchCurrentDivision } from "@/lib/ea";
 import { logServerError } from "@/lib/errors";
-import type { Club, ClubDivision, Platform } from "@/types/club";
+import type { Club, Platform } from "@/types/club";
 
 /**
  * Busca o clube (e a divisão) na EA, cria/atualiza o registro no banco e
@@ -15,13 +15,18 @@ export async function syncClubProfile(
   syncedAt: string,
 ): Promise<Club> {
   const snapshot = await fetchClubSnapshot(eaClubId, platform);
-  let division: ClubDivision | null = null;
+  let current: number | null = null;
   try {
-    division = await fetchClubDivision(eaClubId, snapshot.name, platform);
+    current = await fetchCurrentDivision(eaClubId, snapshot.name, platform);
   } catch (error) {
     // A divisão é complementar: sem ela, fica a que já estava salva.
     logServerError("sync:division", error);
   }
+  const division = snapshot.division
+    ? { ...snapshot.division, current }
+    : current !== null
+      ? { current, best: null, promotions: null, relegations: null }
+      : null;
   const club = await upsertClub({ ...snapshot, division }, syncedAt);
 
   try {

@@ -66,6 +66,10 @@ export const EAClubOverallStatsSchema = z.object({
   goals: eaNumber,
   goalsAgainst: eaNumber,
   skillRating: eaNumber,
+  /** Somam todas as temporadas, inclusive a atual (a divisão atual não vem aqui). */
+  bestDivision: eaNumber,
+  promotions: eaNumber,
+  relegations: eaNumber,
 });
 export type EAClubOverallStats = z.output<typeof EAClubOverallStatsSchema>;
 
@@ -81,7 +85,10 @@ export const EALeaderboardEntrySchema = z.object({
   losses: eaNumber,
   goals: eaNumber,
   goalsAgainst: eaNumber,
-  /** Só o ranking informa a divisão atual; /clubs/overallStats não traz. */
+  /**
+   * Divisão no fim do recorte do ranking: no da temporada atual é a divisão de
+   * agora; no de todas as temporadas fica parada no fim da anterior.
+   */
   currentDivision: eaNumber,
   bestDivision: eaNumber,
   promotions: eaNumber,
