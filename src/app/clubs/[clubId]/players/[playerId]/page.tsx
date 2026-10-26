@@ -10,6 +10,7 @@ import { BackLink } from "@/components/layout/BackLink";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { RESULT_LETTERS } from "@/components/matches/MatchResult";
+import { DuelLink } from "@/components/players/DuelLink";
 import { FormBadge } from "@/components/players/FormBadge";
 import { OverallProgress } from "@/components/players/OverallProgress";
 import { PlayerMatchLog } from "@/components/players/PlayerMatchLog";
@@ -35,6 +36,7 @@ import {
 } from "@/lib/format";
 import { ratingScale } from "@/lib/stats/chart-scale";
 import { computeDecisive, type DecisivePlayer } from "@/lib/stats/decisive";
+import { pickDuelOpponent } from "@/lib/stats/versus";
 import { computeForm, type PlayerForm } from "@/lib/stats/form";
 import { computeImpact, MIN_IMPACT_GAMES, type PlayerImpact } from "@/lib/stats/impact";
 import {
@@ -498,11 +500,17 @@ export default async function PlayerProfilePage({
     mvps: rank((p) => p.stats.manOfTheMatch),
   };
   const isFirst = (value: SquadRank | null) => value?.position === 1;
+  const duelOpponent = pickDuelOpponent(squad, player.id);
 
   return (
     <div className="space-y-10">
       <div className="space-y-4">
-        <BackLink href={`/clubs/${club.id}/players`}>Jogadores</BackLink>
+        <div className="flex items-center justify-between gap-3">
+          <BackLink href={`/clubs/${club.id}/players`}>Jogadores</BackLink>
+          {duelOpponent && (
+            <DuelLink href={`/clubs/${club.id}/players/${player.id}/vs/${duelOpponent.id}`} label="Duelar" />
+          )}
+        </div>
         <PlayerHero
           club={club}
           player={player}

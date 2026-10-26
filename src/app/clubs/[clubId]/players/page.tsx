@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { EmptyState } from "@/components/layout/EmptyState";
 import { SectionHeading } from "@/components/layout/SectionHeading";
+import { DuelLink } from "@/components/players/DuelLink";
 import { OverallRisers } from "@/components/players/OverallRisers";
 import { PLAYER_STAT_COLUMNS } from "@/components/players/player-columns";
 import { PlayerStatsCard } from "@/components/players/PlayerStatsCard";
@@ -14,6 +15,7 @@ import { listClubPlayerProgress, listPlayersByClub } from "@/lib/db/players.repo
 import { computeSquadForm } from "@/lib/stats/form";
 import { overallTrends } from "@/lib/stats/progress";
 import { PLAYER_SORT_KEYS, sortPlayers } from "@/lib/stats/player-stats";
+import { pickDuelOpponent } from "@/lib/stats/versus";
 import { cn } from "@/lib/utils";
 
 import { loadClub } from "../load-club";
@@ -49,6 +51,8 @@ export default async function ClubPlayersPage({
     direction,
   );
   const forms = computeSquadForm(matches, stats, players);
+  const duelA = pickDuelOpponent(players);
+  const duelB = duelA && pickDuelOpponent(players, duelA.id);
 
   if (players.length === 0) {
     return (
@@ -65,6 +69,9 @@ export default async function ClubPlayersPage({
       <SectionHeading
         title="Jogadores"
         description={`${players.length} jogadores · estatísticas da temporada no clube (EA) · seta = fase nos últimos jogos`}
+        action={
+          duelA && duelB ? <DuelLink href={`${basePath}/${duelA.id}/vs/${duelB.id}`} label="Duelo x1" /> : undefined
+        }
       />
 
       <OverallRisers clubId={club.id} players={players} trends={overallTrends(progress)} />

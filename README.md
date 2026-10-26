@@ -186,6 +186,10 @@ região, semântica de `winnerByDnf`.
 - **O cara decisivo**: cada gol vale a parte dele nos pontos do jogo (no 2×1, 1,5; no 2×0, 1;
   no 8×1, 0,375) e quem marca e quem dá a assistência levam esse valor. Destaque na visão
   geral, ranking em Recordes, "Decisivo da noite", "Decisivo do mês" e selo no perfil.
+- **Duelo x1** (`/clubs/[clubId]/players/[a]/vs/[b]`): gols, assistências, pré-assistências,
+  passes certos e errados, conversão e desarmes lado a lado, nos jogos em que os dois estavam
+  em campo (ou por jogo, no geral), com placar de estatísticas vencidas, campanha dos dois
+  juntos e com só um deles, e card de prévia para o WhatsApp.
 - **Pré-assistências e interceptações**: lidas dos contadores de eventos da EA desde
   26/10/2026 (ver [`docs/ea-endpoints.md`](docs/ea-endpoints.md)). Aparecem na partida, no
   resumo da noite (Armador e Ladrão de bola), nos prêmios do mês, nos recordes e no perfil.
