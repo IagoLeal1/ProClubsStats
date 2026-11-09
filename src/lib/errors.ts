@@ -3,6 +3,7 @@ import "server-only";
 import { isDatabaseError } from "@/lib/db/errors";
 import { isEAError, type EAErrorKind } from "@/lib/ea";
 import { ConfigurationError } from "@/lib/env";
+import { isDispatchError } from "@/lib/github/dispatch";
 
 const EA_MESSAGES: Record<EAErrorKind, string> = {
   not_found: "Clube não encontrado na EA. Confira o nome (ou ID) e a plataforma.",
@@ -24,6 +25,11 @@ export function getUserMessage(error: unknown): string {
   if (isEAError(error)) return EA_MESSAGES[error.kind];
   if (isDatabaseError(error)) {
     return "Nosso banco de dados está indisponível no momento. Tente novamente em instantes.";
+  }
+  if (isDispatchError(error)) {
+    return error.status === 401 || error.status === 403
+      ? "O site não conseguiu pedir a atualização: o acesso ao GitHub expirou ou perdeu a permissão. O agendamento continua atualizando os dados."
+      : "O GitHub recusou o pedido de atualização agora. Tente de novo em instantes.";
   }
   if (error instanceof ConfigurationError) {
     return "O servidor não está configurado corretamente. Verifique as variáveis de ambiente.";

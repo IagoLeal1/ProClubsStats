@@ -6,6 +6,21 @@ import type { Platform } from "@/types/club";
 const WORKFLOW_FILE = "sync-clubs.yml";
 const BRANCH = "main";
 
+/** O GitHub recusou o pedido (ex.: 401 com o token expirado). */
+export class DispatchError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`GitHub recusou o pedido de sincronização (${status})`);
+    this.name = "DispatchError";
+    this.status = status;
+  }
+}
+
+export function isDispatchError(error: unknown): error is DispatchError {
+  return error instanceof DispatchError;
+}
+
 export function isSyncDispatchConfigured(): boolean {
   return getGitHubDispatchConfig() !== null;
 }
@@ -32,8 +47,6 @@ export async function dispatchClubSync(eaClubId: number, platform: Platform): Pr
       signal: AbortSignal.timeout(10_000),
     },
   );
-  if (!response.ok) {
-    throw new Error(`GitHub recusou o pedido de sincronização (${response.status})`);
-  }
+  if (!response.ok) throw new DispatchError(response.status);
   return true;
 }
