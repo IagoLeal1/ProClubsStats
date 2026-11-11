@@ -38,8 +38,9 @@ componentes base são shadcn/ui (estilo base-nova, Base UI) em `src/components/u
   x1): título em `figure`, texto em `primary-foreground` e um ícone grande em contorno a 20%
   vazando pelo canto.
 - Destaque secundário: card normal com borda `primary` (Decisivo da noite e do mês).
-- Notas por faixa: 8,0+ em `primary`; 7,0–7,9, 6,0–6,9 e abaixo de 6 com os pares
-  `rating-*-fg`/`rating-*-bg` (ver `RatingBadge`).
+- Notas por faixa (`RatingBadge`): 8,0+ em `primary` com texto `primary-foreground`;
+  7,0–7,9 verde-claro `#86efac` sobre `#12321f`; 6,0–6,9 amarelo `#fcd34d` sobre `#3a2f12`;
+  abaixo de 6 rosado `#ffb4ad` sobre `#3a1e1c`.
 - Cor nunca vem sozinha: resultado tem letra, fase tem seta e rótulo, nota tem o número.
 
 ## Tipografia
